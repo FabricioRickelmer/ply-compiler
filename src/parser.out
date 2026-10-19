@@ -1,0 +1,109 @@
+Created by PLY version 3.11 (http://www.dabeaz.com/ply)
+
+Unused terminals:
+
+    FALSE
+    PRINT
+    REAL
+    TRUE
+
+Grammar
+
+Rule 0     S' -> empty
+Rule 1     empty -> <empty>
+Rule 2     program -> stmt_list
+Rule 3     stmt_list -> stmt_list stmt
+Rule 4     stmt_list -> stmt
+Rule 5     stmt -> { stmt_list }
+Rule 6     stmt -> { }
+Rule 7     stmt -> INT ID ;
+Rule 8     stmt -> FLOAT ID ;
+Rule 9     stmt -> ID ASSIGN expr ;
+Rule 10    expr -> expr PLUS expr
+Rule 11    expr -> expr MINUS expr
+Rule 12    expr -> expr TIMES expr
+Rule 13    expr -> expr DIVI expr
+Rule 14    expr -> expr EQ expr
+Rule 15    expr -> expr NE expr
+Rule 16    expr -> expr LT expr
+Rule 17    expr -> expr LE expr
+Rule 18    expr -> expr GT expr
+Rule 19    expr -> expr GE expr
+Rule 20    expr -> expr AND expr
+Rule 21    expr -> expr OR expr
+Rule 22    expr -> NOT expr
+Rule 23    expr -> ( expr )
+Rule 24    expr -> NUM
+Rule 25    expr -> ID
+Rule 26    if_head -> IF ( expr )
+Rule 27    stmt -> if_head stmt
+Rule 28    else_head -> ELSE
+Rule 29    stmt -> if_head stmt else_head stmt
+Rule 30    while_marker -> empty
+Rule 31    while_head -> WHILE while_marker ( expr )
+Rule 32    stmt -> while_head stmt
+Rule 33    stmt -> BREAK ;
+
+Terminals, with rules where they appear
+
+(                    : 23 26 31
+)                    : 23 26 31
+;                    : 7 8 9 33
+AND                  : 20
+ASSIGN               : 9
+BREAK                : 33
+DIVI                 : 13
+ELSE                 : 28
+EQ                   : 14
+FALSE                : 
+FLOAT                : 8
+GE                   : 19
+GT                   : 18
+ID                   : 7 8 9 25
+IF                   : 26
+INT                  : 7
+LE                   : 17
+LT                   : 16
+MINUS                : 11
+NE                   : 15
+NOT                  : 22
+NUM                  : 24
+OR                   : 21
+PLUS                 : 10
+PRINT                : 
+REAL                 : 
+TIMES                : 12
+TRUE                 : 
+WHILE                : 31
+error                : 
+{                    : 5 6
+}                    : 5 6
+
+Nonterminals, with rules where they appear
+
+else_head            : 29
+empty                : 30 0
+expr                 : 9 10 10 11 11 12 12 13 13 14 14 15 15 16 16 17 17 18 18 19 19 20 20 21 21 22 23 26 31
+if_head              : 27 29
+program              : 
+stmt                 : 3 4 27 29 29 32
+stmt_list            : 2 3 5
+while_head           : 32
+while_marker         : 31
+
+Parsing method: LALR
+
+state 0
+
+    (0) S' -> . empty
+    (1) empty -> .
+
+    $end            reduce using rule 1 (empty -> .)
+
+    empty                          shift and go to state 1
+
+state 1
+
+    (0) S' -> empty .
+
+
