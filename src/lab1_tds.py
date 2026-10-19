@@ -3,9 +3,7 @@ import sys
 import ply.lex as lex
 import ply.yacc as yacc
 
-# =====================================================================
-# Variaveis globais de estado do compilador
-# =====================================================================
+# Estado global do compilador
 SYMBOLS = {}
 OFFSET = 0
 LABEL_COUNT = 0
@@ -32,9 +30,7 @@ def reset_compiler():
     DO_PENDING = []
     LOOP_EXITS = []
 
-# =====================================================================
-# Passo 1: Analisador Lexico
-# =====================================================================
+# Analisador lexico
 reserved = {
     'if': 'IF',
     'else': 'ELSE',
@@ -59,7 +55,7 @@ tokens = [
 
 literals = '{}();,'
 
-# Regras simples de operadores
+# Operadores relacionais, logicos e aritmeticos
 t_EQ     = r'=='
 t_NE     = r'!='
 t_LE     = r'<='
@@ -75,10 +71,10 @@ t_MINUS  = r'-'
 t_TIMES  = r'\*'
 t_DIVI   = r'/'
 
-# Ignorar espacos e tabulacoes
+# Descarte de espacos e tabulacoes
 t_ignore = ' \t'
 
-# Comentarios de linha e bloco
+# Tratamento de comentarios
 def t_COMMENT_SINGLE(t):
     r'//.*'
     pass
@@ -87,7 +83,7 @@ def t_COMMENT_BLOCK(t):
     r'/\*(.|\n)*?\*/'
     t.lexer.lineno += t.value.count('\n')
 
-# Numeros reais devem vir antes de inteiros para evitar match parcial
+# Numeros reais e inteiros
 def t_REAL(t):
     r'\d+\.\d+'
     t.value = float(t.value)
@@ -98,6 +94,7 @@ def t_NUM(t):
     t.value = int(t.value)
     return t
 
+# Identificadores e palavras reservadas
 def t_ID(t):
     r'[a-zA-Z_][a-zA-Z0-9_]*'
     t.type = reserved.get(t.value, 'ID')
@@ -113,12 +110,10 @@ def t_error(t):
 
 lexer = lex.lex()
 
-# =====================================================================
-# Passo 2 ao 5 + Desafios: Analisador Sintatico e Traducao Dirigida
-# =====================================================================
+# Analisador sintatico e traducao dirigida por sintaxe
 start = 'program'
 
-# Estrutura geral do programa e blocos
+# Estrutura do programa e blocos de comandos
 def p_program(p):
     """program : opt_stmts"""
     p[0] = p[1]
@@ -137,7 +132,7 @@ def p_stmt_block(p):
     """stmt : '{' opt_stmts '}'"""
     pass
 
-# Passo 3: Declaracoes, Atribuicao e Memoria
+# Declaracoes de variaveis
 def p_decl(p):
     """stmt : INT ID ';'
             | FLOAT ID ';'"""
@@ -152,6 +147,7 @@ def p_decl(p):
     emit(f"AMEM {largura}\t; {nome} address: {OFFSET}")
     OFFSET += largura
 
+# Atribuicao
 def p_stmt_assign(p):
     """stmt : ID ASSIGN bool ';'"""
     if p[1] not in SYMBOLS:
@@ -159,7 +155,7 @@ def p_stmt_assign(p):
         raise SystemExit(1)
     emit(f"ARMZ 0,{SYMBOLS[p[1]]}\t; {p[1]}")
 
-# Desafio 4.2: Entrada e Saida (read e print)
+# Comandos de entrada e saida
 def p_stmt_print(p):
     """stmt : PRINT '(' bool ')' ';'"""
     emit("IMPR")
@@ -172,7 +168,7 @@ def p_stmt_read(p):
     emit("LEIT")
     emit(f"ARMZ 0,{SYMBOLS[p[3]]}\t; {p[3]}")
 
-# Passo 4: Comando Condicional (if / else)
+# Comando condicional if e else
 def p_if_head(p):
     """if_head : IF '(' bool ')'"""
     l1, l2 = new_label(), new_label()
@@ -194,7 +190,7 @@ def p_stmt_if_else(p):
     """stmt : if_head stmt ELSE else_mark stmt"""
     emit(f"L{IF_PENDING.pop()[1]}:")
 
-# Passo 5: Comando de Repeticao (while / break)
+# Comando de repeticao while e interrupcao break
 def p_while_start(p):
     """while_start : """
     l1, l2 = new_label(), new_label()
@@ -221,7 +217,7 @@ def p_stmt_break(p):
         raise SystemExit(1)
     emit(f"DSVS L{LOOP_EXITS[-1]}\t; break")
 
-# Desafio 4.1: Repeticao pos-testada (do-while)
+# Comando de repeticao pos-testado do-while
 def p_do_start(p):
     """do_start : """
     l1 = new_label()
@@ -237,10 +233,7 @@ def p_stmt_do_while(p):
     emit(f"DSVT L{l1}")
     emit(f"L{l2}:")
 
-# =====================================================================
-# Passo 2: Expressoes por niveis de precedencia (sem conflitos)
-# Niveis: bool -> join -> equality -> rel -> expr -> term -> unary -> factor
-# =====================================================================
+# Hierarquia de expressoes por precedencia
 def p_bool_or(p):
     """bool : bool OR join"""
     emit("DISJ")
@@ -382,12 +375,10 @@ def p_error(p):
         print("Erro de sintaxe: fim de arquivo inesperado")
     raise SystemExit(1)
 
-# Gerar tabelas de parsing dentro do diretorio do modulo (src/)
+# Geracao do parser LALR
 parser = yacc.yacc(outputdir=os.path.dirname(os.path.abspath(__file__)))
 
-# =====================================================================
-# Execucao do compilador via linha de comando
-# =====================================================================
+# Execucao por linha de comando
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         file_path = sys.argv[1]

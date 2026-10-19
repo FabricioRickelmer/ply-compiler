@@ -4,16 +4,17 @@ import sys
 
 # Diretorio base do projeto (um nivel acima de tests/)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+EXAMPLES_DIR = os.path.join(BASE_DIR, "examples") if os.path.isdir(os.path.join(BASE_DIR, "examples")) else os.path.join(BASE_DIR, "exemplos")
 
 EXAMPLES = [
-    (os.path.join(BASE_DIR, "exemplos", "expr.uc"), None),
-    (os.path.join(BASE_DIR, "exemplos", "decl.uc"), None),
-    (os.path.join(BASE_DIR, "exemplos", "precedencia.uc"), None),
-    (os.path.join(BASE_DIR, "exemplos", "if.uc"), None),
-    (os.path.join(BASE_DIR, "exemplos", "while.uc"), None),
-    (os.path.join(BASE_DIR, "exemplos", "break.uc"), None),
-    (os.path.join(BASE_DIR, "exemplos", "dowhile.uc"), None),
-    (os.path.join(BASE_DIR, "exemplos", "fib.uc"), "10\n"),
+    (os.path.join(EXAMPLES_DIR, "expr.uc"), None),
+    (os.path.join(EXAMPLES_DIR, "decl.uc"), None),
+    (os.path.join(EXAMPLES_DIR, "precedencia.uc"), None),
+    (os.path.join(EXAMPLES_DIR, "if.uc"), None),
+    (os.path.join(EXAMPLES_DIR, "while.uc"), None),
+    (os.path.join(EXAMPLES_DIR, "break.uc"), None),
+    (os.path.join(EXAMPLES_DIR, "dowhile.uc"), None),
+    (os.path.join(EXAMPLES_DIR, "fib.uc"), "10\n"),
 ]
 
 python_exe = sys.executable
@@ -23,7 +24,7 @@ mepa_script = os.path.join(BASE_DIR, "mepa", "mepa_pt.py")
 print("=== EXECUTANDO BATERIA DE TESTES DO COMPILADOR ===")
 for uc_file, input_data in EXAMPLES:
     base_name = os.path.splitext(os.path.basename(uc_file))[0]
-    out_mepa = os.path.join(BASE_DIR, "exemplos", f"{base_name}.mepa")
+    out_mepa = os.path.join(EXAMPLES_DIR, f"{base_name}.mepa")
     rel_path = os.path.relpath(uc_file, BASE_DIR)
     print(f"\n[TESTE] Compilando {rel_path}...")
     

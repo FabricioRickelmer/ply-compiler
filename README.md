@@ -21,7 +21,7 @@ ply-compiler/
 │   └── test_suite.py       # Script de automação de testes
 ├── mepa/                   # Interpretador da Máquina Virtual MEPA 5.0
 │   └── mepa_pt.py
-├── exemplos/               # Programas de teste na linguagem µC (.uc)
+├── examples/               # Programas de teste na linguagem µC (.uc)
 │   ├── expr.uc             # Expressões básicas
 │   ├── decl.uc             # Declarações int (4B) e float (8B)
 │   ├── precedencia.uc      # Verificação de precedência (+, -, *, /)
@@ -48,7 +48,7 @@ ply-compiler/
 
 ### 2. Compilar um programa em µC
 ```bash
-python src/lab1_tds.py exemplos/while.uc > mvpOutput.txt
+python src/lab1_tds.py examples/while.uc > mvpOutput.txt
 ```
 
 ### 3. Executar o código gerado na MEPA
