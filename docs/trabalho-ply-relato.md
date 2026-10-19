@@ -278,6 +278,3 @@ Em conformidade com as diretrizes da Seção 14 deste laboratório e a escala AI
 * **Passos 1 a 3 (Nível 2 — Auxiliar):** Ferramentas de IA foram consultadas para esclarecimento de recursos da biblioteca PLY, documentação de métodos léxicos/sintáticos e sintaxe de tratamento de erros.
 * **Passos 4 e 5 (Nível 1 — Sem IA):** A lógica conceitual de divisão das produções em regras auxiliares marcadoras (`if_head`, `else_mark`, `while_start`, `while_head`), bem como o gerenciamento das pilhas de atributos herdados (`IF_PENDING`, `WHILE_PENDING`, `LOOP_EXITS`), foi desenvolvida, compreendida e estruturada pela equipe.
 * **Desafio 4.4 (Nível 4 — Auditor):** A equipe atuou como auditora crítica do código gerado por modelo de linguagem, demonstrando proficiência ao identificar os erros semânticos de temporização de redução LALR e formulando a correção técnica validada na MEPA.
-
-*Declaração individual:*  
-**Fabrício Rickelmer Souza Duarte:** Confirmo que todas as ações e decisões relatadas foram rigorosamente compreendidas e implementadas, garantindo o domínio pleno sobre a tradução dirigida por sintaxe e a geração de código para a máquina de pilha MEPA.
