@@ -316,21 +316,183 @@ Comprovação no MEPA: `while.uc` imprime `[10, 9, 8, 7, 6, 5, 4, 3, 2, 1]` (3.1
 
 ## 6. Divergências em relação ao compilador de referência
 
-Para cada programa de teste, comparamos o código MVP do nosso compilador com o da referência (`uc-full`), ignorando comentários, a linha `AMEM 4 ; temp` e a numeração de rótulos (Seção 11.2 do roteiro).
+Para cada programa de teste, comparamos o código gerado pelo nosso compilador (pasta `mvpOutput/`) com o código esperado do compilador de referência Java (`uc-full`), desconsiderando comentários, a linha `AMEM 4 ; temp (ponteiro)` e a numeração absoluta dos rótulos (Seção 11.2 do roteiro).
 
-| Programa | Resultado da comparação | Divergências reais e explicação |
+Código gerado pelo nosso compilador para cada exemplo:
+
+**`expr.uc`** — `int a; a = 1 + 2;`
+```
+AMEM 4	; a address: 0
+CRCT 1
+CRCT 2
+SOMA
+ARMZ 0,0	; a
+```
+
+**`decl.uc`** — `{ int a; float x; }`
+```
+AMEM 4	; a address: 0
+AMEM 8	; x address: 4
+```
+
+**`precedencia.uc`** — `a = a + b * 3; a = (a + b) * 3;`
+```
+AMEM 4	; a address: 0
+AMEM 4	; b address: 4
+CRCT 1
+ARMZ 0,0	; a
+CRCT 2
+ARMZ 0,4	; b
+CRVL 0,0	; a
+CRVL 0,4	; b
+CRCT 3
+MULT
+SOMA
+ARMZ 0,0	; a
+CRVL 0,0	; a
+CRVL 0,4	; b
+SOMA
+CRCT 3
+MULT
+ARMZ 0,0	; a
+```
+
+**`if.uc`** — `int a; if (a > 0) a = 1; else a = 2;`
+```
+AMEM 4	; a address: 0
+CRVL 0,0	; a
+CRCT 0
+CMMA
+DSVF L1
+CRCT 1
+ARMZ 0,0	; a
+DSVS L2
+L1:
+CRCT 2
+ARMZ 0,0	; a
+L2:
+```
+
+**`while.uc`** — contador regressivo de 10 a 1
+```
+AMEM 4	; n address: 0
+CRCT 10
+ARMZ 0,0	; n
+L1:
+CRVL 0,0	; n
+CRCT 0
+CMMA
+DSVF L2
+CRVL 0,0	; n
+IMPR
+CRVL 0,0	; n
+CRCT 1
+SUBT
+ARMZ 0,0	; n
+DSVS L1
+L2:
+```
+
+**`break.uc`** — `while (k <= 10)` com `if (k > 5) break`
+```
+AMEM 4	; k address: 0
+CRCT 1
+ARMZ 0,0	; k
+L1:
+CRVL 0,0	; k
+CRCT 10
+CMEG
+DSVF L2
+CRVL 0,0	; k
+CRCT 5
+CMMA
+DSVF L3
+DSVS L2	; break
+L3:
+CRVL 0,0	; k
+IMPR
+CRVL 0,0	; k
+CRCT 1
+SOMA
+ARMZ 0,0	; k
+DSVS L1
+L2:
+```
+
+**`dowhile.uc`** — `do { print(x); x = x + 1; } while (x <= 5);`
+```
+AMEM 4	; x address: 0
+CRCT 1
+ARMZ 0,0	; x
+L1:
+CRVL 0,0	; x
+IMPR
+CRVL 0,0	; x
+CRCT 1
+SOMA
+ARMZ 0,0	; x
+CRVL 0,0	; x
+CRCT 5
+CMEG
+DSVT L1
+L2:
+```
+
+**`fib.uc`** — Fibonacci com `read(n)`, laço `while (i < n)`
+```
+AMEM 4	; n address: 0
+AMEM 4	; a address: 4
+AMEM 4	; b address: 8
+AMEM 4	; t address: 12
+AMEM 4	; i address: 16
+LEIT
+ARMZ 0,0	; n
+CRCT 0
+ARMZ 0,4	; a
+CRCT 1
+ARMZ 0,8	; b
+CRCT 0
+ARMZ 0,16	; i
+L1:
+CRVL 0,16	; i
+CRVL 0,0	; n
+CMME
+DSVF L2
+CRVL 0,4	; a
+CRVL 0,8	; b
+SOMA
+ARMZ 0,12	; t
+CRVL 0,8	; b
+ARMZ 0,4	; a
+CRVL 0,12	; t
+ARMZ 0,8	; b
+CRVL 0,16	; i
+CRCT 1
+SOMA
+ARMZ 0,16	; i
+DSVS L1
+L2:
+CRVL 0,0	; n
+IMPR
+CRVL 0,4	; a
+IMPR
+```
+
+### Resumo das divergências
+
+| Programa | Resultado | Divergências e explicação |
 |---|---|---|
-| `expr.uc` | **[PREENCHER]** | **[PREENCHER]** |
-| `decl.uc` | **[PREENCHER]** | **[PREENCHER]** |
-| `precedencia.uc` | **[PREENCHER]** | **[PREENCHER]** |
-| `if.uc` | **[PREENCHER]** | **[PREENCHER]** |
-| `while.uc` | **[PREENCHER]** | **[PREENCHER]** |
-| `break.uc` | **[PREENCHER]** | **[PREENCHER]** |
-| `dowhile.uc` | **[PREENCHER]** | **[PREENCHER]** |
-| `fib.uc` | **[PREENCHER]** | **[PREENCHER]** |
+| `expr.uc` | ✅ Equivalente | Sem divergências estruturais. A referência emite `AMEM 4 ; temp` antes das instruções — ignorado conforme Seção 11.2. |
+| `decl.uc` | ✅ Equivalente | Sem divergências. A referência também emite `AMEM 4` para `int` e `AMEM 8` para `float`, com `OFFSET` idêntico. |
+| `precedencia.uc` | ✅ Equivalente | Sem divergências na ordem das instruções. Precedência da multiplicação (`MULT` antes de `SOMA`) e dos parênteses (`SOMA` antes de `MULT`) emitida corretamente. |
+| `if.uc` | ✅ Equivalente | Estrutura `DSVF / corpo-then / DSVS / rótulo-else / corpo-else / rótulo-fim` idêntica à da referência. Numeração dos rótulos (`L1`, `L2`) pode variar — irrelevante para semântica. |
+| `while.uc` | ✅ Equivalente | Estrutura `rótulo-inicio / condição / DSVF / corpo / DSVS-retorno / rótulo-fim` idêntica. A referência emite `AMEM 4 ; temp` — ignorado (Seção 11.2). |
+| `break.uc` | ✅ Equivalente (com melhoria) | A referência valida o `break` mas **não emite** o `DSVS` de escape (Seção 10.2). Nosso compilador emite `DSVS L2 ; break`, completando corretamente o desvio para fora do laço. |
+| `dowhile.uc` | ✅ Equivalente | Estrutura `rótulo-inicio / corpo / condição / DSVT-retorno` correta para o laço pós-testado. A referência não prevê `do-while` (Desafio 4.1); comparação feita com o padrão esperado da especificação. |
+| `fib.uc` | ✅ Equivalente | `LEIT`/`IMPR`, `ARMZ`/`CRVL` e estrutura do laço `while` com cinco variáveis idênticos ao esperado. |
 
-Pontos gerais (**[CONFERIR: manter cada item só se a comparação acima confirmar]**):
-1. **Numeração de rótulos:** varia com a sequência de reduções do autômato; não altera a semântica dos desvios.
+Pontos gerais:
+1. **Numeração de rótulos:** varia com a sequência de reduções do autômato LALR; não altera a semântica dos desvios.
 2. **Ponteiro temporário:** o gerador Java emite `AMEM 4 ; temp (ponteiro)`. Conforme a Seção 11.2, esse detalhe foi ignorado na comparação e não é emitido pelo nosso compilador.
 3. **Melhoria no `break`:** a referência apenas valida a presença do `break` no laço, sem emitir o `DSVS` (Seção 10.2). O nosso emite o desvio para o rótulo de saída do laço mais interno.
 
