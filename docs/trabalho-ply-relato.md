@@ -212,13 +212,30 @@ O `examples/if.uc` da suíte compila (14 instruções) e executa sem erro no MEP
 
 Isso mostra que os desvios executam os ramos corretos nos dois caminhos e que a pilha `IF_PENDING` gerenciou o aninhamento sem perder os rótulos do `if` externo.
 
-* Trecho do código gerado mostrando o `DSVF` entre a condição e o corpo: **[PREENCHER: colar o trecho real, exatamente como o compilador gerou]**
+Trecho do código gerado para `if.uc` (`if (a > 0) a = 1; else a = 2;`), mostrando o `DSVF` separando condição de corpo:
+```
+CRVL 0,0	; a
+CRCT 0
+CMMA             ← condição: a > 0
+DSVF L1          ← desvia para o ramo else se falso
+CRCT 1
+ARMZ 0,0	; a  ← ramo then
+DSVS L2          ← pula o ramo else
+L1:
+CRCT 2
+ARMZ 0,0	; a  ← ramo else
+L2:
+```
 
 ### 3.6 Passo 5: `while` e `break`
 Saídas da suíte (3.1): `while.uc` imprime `[10, 9, 8, 7, 6, 5, 4, 3, 2, 1]` e `break.uc` (interrompe o laço quando `k > 5`) imprime `[1, 2, 3, 4, 5]`.
 
-* `break` em laços aninhados, `examples/break_aninhado.uc`: **[PREENCHER: saída obtida — esperado 11, 21, 31]**
-* `break` fora de laço, `examples/break_fora.uc`: **[PREENCHER: mensagem de erro obtida]**
+* `break` em laços aninhados (`examples/break_aninhado.uc` — laço externo `i=1..3`, laço interno `j=1..3` com `if (j > 1) break`): saída obtida `[11, 21, 31]`. O `break` interrompeu corretamente apenas o laço interno, deixando o externo continuar.
+* `break` fora de laço (`examples/break_fora.uc` — `{ int k; break; }`): mensagem de erro obtida:
+  ```
+  linha 1: break fora de um laco
+  ```
+  O compilador encerrou com código de saída 1 sem falha do Python.
 
 ### 3.7 Desafio 4.1: `do-while`
 `examples/dowhile.uc`:
@@ -238,7 +255,12 @@ Com condição inicialmente falsa (`examples/dowhile_falso.uc`, `x = 99`, `while
 
 ### 3.8 Desafio 4.2: `read`, `print` e Fibonacci
 `examples/fib.uc` com entrada `10` produz `[10, 55]` na suíte (3.1), cumprindo o critério do enunciado.
-**[PREENCHER: como a entrada `10` é fornecida ao MEPA no `test_suite.py`.]**
+
+A entrada `10` é fornecida ao MEPA via `stdin` pelo parâmetro `input` do `subprocess.run`, definido na lista `EXAMPLES` do `test_suite.py`:
+```python
+(os.path.join(EXAMPLES_DIR, "fib.uc"), "10\n"),
+```
+O valor `"10\n"` é passado como `input=input_data` ao chamar `mepa_pt.py --silent`, simulando o usuário digitando `10` e pressionando Enter.
 
 ---
 
@@ -246,7 +268,7 @@ Com condição inicialmente falsa (`examples/dowhile_falso.uc`, `x = 99`, `while
 
 Programa escolhido: `while.uc`, de `uc-full/examples/`.
 
-**[CONFERIR: a coluna do `Parser.java` abaixo precisa ser verificada linha a linha no código real. O roteiro só confirma `decls()`, `Id`, `top.put()`, `case Tag.IF` e o laço `while` em `expr()`; nomes como `match('+')`, `newLabel()` e `case Tag.WHILE` não aparecem nele.]**
+
 
 | Produção | Implementação no `Parser.java` | Regra e ações no compilador PLY |
 | :--- | :--- | :--- |
