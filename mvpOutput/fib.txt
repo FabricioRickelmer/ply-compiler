@@ -1,0 +1,36 @@
+AMEM 4	; n address: 0
+AMEM 4	; a address: 4
+AMEM 4	; b address: 8
+AMEM 4	; t address: 12
+AMEM 4	; i address: 16
+LEIT
+ARMZ 0,0	; n
+CRCT 0
+ARMZ 0,4	; a
+CRCT 1
+ARMZ 0,8	; b
+CRCT 0
+ARMZ 0,16	; i
+L1:
+CRVL 0,16	; i
+CRVL 0,0	; n
+CMME
+DSVF L2
+CRVL 0,4	; a
+CRVL 0,8	; b
+SOMA
+ARMZ 0,12	; t
+CRVL 0,8	; b
+ARMZ 0,4	; a
+CRVL 0,12	; t
+ARMZ 0,8	; b
+CRVL 0,16	; i
+CRCT 1
+SOMA
+ARMZ 0,16	; i
+DSVS L1
+L2:
+CRVL 0,0	; n
+IMPR
+CRVL 0,4	; a
+IMPR

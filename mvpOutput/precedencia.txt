@@ -1,0 +1,18 @@
+AMEM 4	; a address: 0
+AMEM 4	; b address: 4
+CRCT 1
+ARMZ 0,0	; a
+CRCT 2
+ARMZ 0,4	; b
+CRVL 0,0	; a
+CRVL 0,4	; b
+CRCT 3
+MULT
+SOMA
+ARMZ 0,0	; a
+CRVL 0,0	; a
+CRVL 0,4	; b
+SOMA
+CRCT 3
+MULT
+ARMZ 0,0	; a

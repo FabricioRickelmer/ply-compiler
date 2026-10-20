@@ -1,0 +1,5 @@
+AMEM 4	; a address: 0
+CRCT 1
+CRCT 2
+SOMA
+ARMZ 0,0	; a

@@ -14,7 +14,7 @@ Organizado conforme padrões de engenharia de software (`src/` layout):
 ply-compiler/
 ├── .gitignore
 ├── README.md               # Instruções de compilação, execução e requisitos
-├── mvpOutput.txt           # Saída MEPA de referência para while.uc
+├── mvpOutput/              # Saídas MEPA geradas automaticamente (uma por teste)
 ├── src/                    # Código-fonte do compilador
 │   └── lab1_tds.py         # Compilador (Léxico, Sintático e Tradução Dirigida)
 ├── tests/                  # Bateria de testes
@@ -48,12 +48,12 @@ ply-compiler/
 
 ### 2. Compilar um programa em µC
 ```bash
-python src/lab1_tds.py examples/while.uc > mvpOutput.txt
+python src/lab1_tds.py examples/while.uc > mvpOutput/while.txt
 ```
 
 ### 3. Executar o código gerado na MEPA
 ```bash
-python mepa/mepa_pt.py --progfile mvpOutput.txt --silent
+python mepa/mepa_pt.py --progfile mvpOutput/while.txt --silent
 ```
 
 ### 4. Executar toda a bateria de testes automatizados

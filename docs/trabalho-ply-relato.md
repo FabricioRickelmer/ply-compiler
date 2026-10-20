@@ -122,8 +122,8 @@ linha 1: variavel nao declarada
 ### 3.4 Passo 4 e 5: Laço `while` e `break`
 Execução de `exemplos/while.uc` via MEPA:
 ```bash
-python lab1_tds.py exemplos/while.uc > mvpOutput.txt
-python mepa_pt.py --progfile mvpOutput.txt --silent
+python lab1_tds.py exemplos/while.uc > mvpOutput/while.txt
+python mepa_pt.py --progfile mvpOutput/while.txt --silent
 ```
 Saída produzida:
 ```

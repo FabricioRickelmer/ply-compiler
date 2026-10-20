@@ -1,0 +1,2 @@
+AMEM 4	; a address: 0
+AMEM 8	; x address: 4

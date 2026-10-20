@@ -1,0 +1,15 @@
+AMEM 4	; x address: 0
+CRCT 1
+ARMZ 0,0	; x
+L1:
+CRVL 0,0	; x
+IMPR
+CRVL 0,0	; x
+CRCT 1
+SOMA
+ARMZ 0,0	; x
+CRVL 0,0	; x
+CRCT 5
+CMEG
+DSVT L1
+L2:

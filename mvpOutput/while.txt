@@ -1,0 +1,16 @@
+AMEM 4	; n address: 0
+CRCT 10
+ARMZ 0,0	; n
+L1:
+CRVL 0,0	; n
+CRCT 0
+CMMA
+DSVF L2
+CRVL 0,0	; n
+IMPR
+CRVL 0,0	; n
+CRCT 1
+SUBT
+ARMZ 0,0	; n
+DSVS L1
+L2:

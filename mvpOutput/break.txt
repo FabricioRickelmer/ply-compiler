@@ -1,0 +1,22 @@
+AMEM 4	; k address: 0
+CRCT 1
+ARMZ 0,0	; k
+L1:
+CRVL 0,0	; k
+CRCT 10
+CMEG
+DSVF L2
+CRVL 0,0	; k
+CRCT 5
+CMMA
+DSVF L3
+DSVS L2	; break
+L3:
+CRVL 0,0	; k
+IMPR
+CRVL 0,0	; k
+CRCT 1
+SOMA
+ARMZ 0,0	; k
+DSVS L1
+L2:
