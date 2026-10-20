@@ -1,60 +1,140 @@
-# Relato Técnico — Laboratório 1: Tradução Dirigida por Sintaxe com PLY
+# Relatório Técnico — Laboratório 1: Tradução Dirigida por Sintaxe com PLY
 
 **Disciplina:** ECOI2219 — Compiladores  
 **Professor:** Prof. Walter Aoiama Nagai  
-**Alunos / Equipe:** Fabrício Rickelmer Souza Duarte  
+**Equipe:** Fabrício Rickelmer Souza Duarte | Esther de Faria | Luiza Alves de Oliveira Vieira | Thamara Luiza Bicalho Oliveira Silva  
 **Data:** Outubro de 2026  
-
----
 
 ## 1. Resumo do Projeto
 
-Neste laboratório, foi desenvolvido um compilador completo para a linguagem $\mu\text{C}$ utilizando **Python** e a biblioteca **PLY (Python Lex-Yacc)**, gerando código de máquina de pilha para a **MEPA 5.0**. A metodologia adotada foi a **Tradução Dirigida por Sintaxe (TDS)**, na qual ações semânticas integradas às reduções gramaticais sintetizam instruções da máquina virtual sem a necessidade de árvores sintáticas intermediárias pesadas.
+Neste laboratório foi desenvolvido um compilador para a linguagem µC em **Python**, com a biblioteca **PLY (Python Lex-Yacc)**, gerando código de máquina de pilha para a **MEPA 5.0**. A metodologia foi a **Tradução Dirigida por Sintaxe (TDS)**: as ações semânticas acompanham as reduções gramaticais e emitem as instruções da máquina virtual, sem árvore sintática intermediária.
 
 O projeto contemplou:
-- Passo 1: Analisador Léxico completo, com descarte de espaços/comentários e tipagem estrita de tokens.
-- Passo 2: Gramática em níveis para expressões aritméticas, relacionais e lógicas sem ambiguidades.
-- Passo 3: Declarações com controle global de offset para inteiros (4 bytes) e floats (8 bytes), tabela de símbolos e atribuição.
-- Passo 4: Estruturas de controle condicional (`if` / `else`) utilizando regras auxiliares para resolver o problema do *rótulo no meio*.
-- Passo 5: Laço de repetição `while` com suporte a interrupção via `break` e verificação de escopo.
-- Desafios 4.1 a 4.4: Implementação de comando `do-while`, instruções de I/O `read` e `print`, blocos aninhados, tabela comparativa com o compilador Java de referência e auditoria de código gerado por IA.
+- Passo 1: analisador léxico com palavras reservadas e controle de linha (`lineno`).
+- Passo 2: gramática em níveis (`bool → join → equality → rel → expr → term → unary → factor`) para expressões, sem ambiguidades.
+- Passo 3: declarações com `OFFSET` global (`int` = 4 bytes, `float` = 8 bytes), tabela de símbolos e atribuição.
+- Passo 4: comando condicional (`if` / `else`) com regras auxiliares para o problema do *rótulo no meio*.
+- Passo 5: laço `while` com `break` e verificação de `break` fora de laço.
+- Desafios 4.1 a 4.4: `do-while`, `read` e `print`, blocos aninhados, tabela comparativa com o compilador Java de referência e auditoria de código gerado por IA.
 
 ---
 
 ## 2. Decisões de Projeto
 
-Para cada aspecto arquitetural relevante, analisamos alternativas técnicas antes de selecionar a abordagem final:
+Para cada decisão relevante, registramos a alternativa descartada e o motivo.
 
-### 2.1 Precedência de Operadores: Declaração Manual vs. Gramática em Níveis
-* **Alternativa A (Descartada):** Definir uma produção recursiva geral `expr : expr OP expr` e usar a tupla `precedence` do PLY com associatividades e precedências explícitas.
-  * *Motivo do descarte:* Embora reduza o número de funções, a Seção 7.4 do roteiro alerta expressamente sobre essa armadilha: o comportamento padrão gera conflitos shift/reduce e pode introduzir associatividade indesejada em construções complexas.
-* **Alternativa B (Escolhida):** Estruturação estrita da gramática em níveis hierárquicos:
-  $$\text{bool} \rightarrow \text{join} \rightarrow \text{equality} \rightarrow \text{rel} \rightarrow \text{expr} \rightarrow \text{term} \rightarrow \text{unary} \rightarrow \text{factor}$$
-  * *Vantagem:* Elimina qualquer conflito shift/reduce nas expressões. O autômato LALR reflete de maneira limpa a precedência e associatividade à esquerda esperadas pelo compilador $\mu\text{C}$.
+### 2.1 Precedência de operadores: declaração manual x gramática em níveis
+* **Alternativa descartada:** produção geral `expr : expr OP expr` com a tupla `precedence` do PLY. Reduziria o número de funções, mas a Seção 7.4 do roteiro alerta que essa forma é ambígua e gera conflitos *shift/reduce*, com associatividade indesejada.
+* **Escolhida:** gramática estruturada em níveis hierárquicos, `bool → join → equality → rel → expr → term → unary → factor`.
+* **Vantagem:** elimina os conflitos *shift/reduce* nas expressões e o autômato LALR reflete a precedência e a associatividade à esquerda do µC.
 
-### 2.2 Controle de Desvios: Rótulos Intermediários via Regras Marcadoras
-* **Alternativa A (Descartada):** Emitir `DSVF` ao final da regra `stmt : IF '(' bool ')' stmt`.
-  * *Motivo do descarte:* Quando a função executasse na redução, todo o corpo do `if` já teria sido traduzido. O desvio seria emitido tarde demais, após as instruções do corpo.
-* **Alternativa B (Escolhida):** Dividir a produção criando nós marcadores intermediários:
-  * Para o `if`: `if_head : IF '(' bool ')'` que emite `DSVF L1` imediatamente após a condição, empilhando os rótulos em `IF_PENDING`.
-  * Para o `else`: marcador vazio `else_mark : ` que salta o ramo `else` (`DSVS L2`) e descarrega a chegada do `then` (`L1:`).
-  * Para o `while`: marcador vazio `while_start : ` antes do teste para emitir o rótulo de retorno `L1:`, e `while_head` para emitir o salto condicional `DSVF L2`.
+### 2.2 Controle de desvios: regras marcadoras
+* **Alternativa descartada:** emitir `DSVF` ao final da regra `stmt : IF '(' bool ')' stmt`.
+  * *Motivo:* quando a função roda, o corpo do `if` já foi traduzido; o desvio sairia tarde demais, depois das instruções do corpo.
+* **Escolhida:** dividir a produção com marcadores intermediários:
+  * `if`: `if_head : IF '(' bool ')'` emite `DSVF L1` logo após a condição e empilha os rótulos em `IF_PENDING`.
+  * `else`: marcador vazio `else_mark` emite `DSVS L2` (pula o `else`) e `L1:` (chegada do `then`).
+  * `while`: marcador vazio `while_start` emite o rótulo de retorno `L1:` antes do teste; `while_head` emite `DSVF L2`.
+* *Por que `IF_PENDING` é uma pilha:* Decidimos usar a `IF_PENDING` como pilha para suportar comandos condicionais aninhados. Se fosse uma variável simples, ao traduzir um código como `if (a) if (b) print(1);`, os rótulos gerados para o `if (b)` sobrescreveriam e apagariam os do `if (a)`. Com a estrutura de pilha, os rótulos do `if` externo ficam salvos na base enquanto o interno empilha e resolve os seus no topo, garantindo que todos os desvios sejam fechados na ordem exata e sem perda de referência.
 
-### 2.3 Tratamento do comando `break`
-* **Alternativa A (Descartada):** Usar uma variável escalar simples para armazenar o rótulo de saída.
-  * *Motivo do descarte:* Falha em laços aninhados (`while` dentro de `while`), onde o laço interno sobrescreveria o rótulo do laço externo.
-* **Alternativa B (Escolhida):** Pilha `LOOP_EXITS`. Ao entrar em um laço (`while` ou `do-while`), o rótulo de saída é empilhado; ao sair do laço, é desempilhado. Se `break` for invocado com `LOOP_EXITS` vazia, um erro semântico claro é reportado: `linha X: break fora de um laco`.
+### 2.3 Tratamento do `break`
+* **Alternativa descartada:** variável escalar com o rótulo de saída.
+  * *Motivo:* falha em laços aninhados, porque o laço interno sobrescreveria o rótulo do externo.
+* **Escolhida:** pilha `LOOP_EXITS`. O rótulo de saída é empilhado ao entrar no laço e desempilhado ao sair. Se `break` ocorrer com a pilha vazia, o compilador reporta `linha X: break fora de um laco`.
 
-### 2.4 Alocação de Memória e Tabela de Símbolos
-* O offset é mantido global através de uma variável `OFFSET`, sem ser reiniciado em blocos aninhados `{ ... }`. Isso reflete fielmente o modelo do $\mu\text{C}$ de referência, onde o endereçamento na pilha MEPA avança continuamente para novas variáveis locais.
+### 2.4 Alocação de memória e tabela de símbolos
+* **Alternativa descartada:** reiniciar o `OFFSET` a cada `{`.
+  * *Motivo:* o roteiro (Passo 3, "Armadilha") avisa que o programa compila mas lê a memória errada, porque o µC numera as variáveis numa sequência única mesmo com blocos aninhados.
+* **Escolhida:** `OFFSET` global, nunca reiniciado em `{ ... }`.
+
+### 2.5 Largura dos tipos
+`int` ocupa 4 bytes e `float` 8 bytes (`symbols/Type.java`); por isso o `AMEM` e o incremento do `OFFSET` dependem do tipo declarado.
+
+### 2.6 Variável não declarada
+* **Alternativa descartada:** deixar o dicionário `SYMBOLS` lançar `KeyError`. Se não tratarmos isso, o compilador simplesmente "quebra" e fecha do nada com o erro nativo do Python. Para evitar esse crash, preferimos apontar o problema: o programa avisa em que linha o erro ocorreu (dizendo "variável não declarada") e encerra a execução de forma limpa e controlada, exatamente como a especificação pede.
+* **Escolhida:** verificar na regra `factor : ID` e encerrar com `linha X: variavel nao declarada`.
+
+### 2.7 Formato dos rótulos para o MEPA
+* **Escolhida:** emitir o rótulo já na mesma linha da instrução (formato nativo do MEPA).
+* **Alternativa descartada:** gerar o rótulo em uma linha separada e depender do comando `awk` para fazer a conversão depois.
+* **Motivo:** gerar o código já formatado para o MEPA (ex.: `L1: SOMA`) deixou o compilador mais independente e prático. Descartamos o uso do `awk` porque exigir um passo extra de conversão no terminal só deixaria a execução e a automação da nossa bateria de testes mais burocrática e lenta.
 
 ---
 
 ## 3. Evidências de Execução
 
-Todas as etapas foram validadas com execuções reais comparadas com o simulador MEPA 5.0.
+### 3.1 Suíte de testes
+Comando executado na pasta do projeto (`ply-compiler`):
 
-### 3.1 Passo 1: Análise Léxica
+```
+python tests/test_suite.py
+```
+
+Resultado (saída do terminal):
+
+| Programa | Instruções emitidas | Saída do MEPA |
+|---|---|---|
+| `examples\expr.uc` | 7 | `[]` |
+| `examples\decl.uc` | 4 | `[]` |
+| `examples\precedencia.uc` | 20 | `[]` |
+| `examples\if.uc` | 14 | `[]` |
+| `examples\while.uc` | 18 | `[10, 9, 8, 7, 6, 5, 4, 3, 2, 1]` |
+| `examples\break.uc` | 24 | `[1, 2, 3, 4, 5]` |
+| `examples\dowhile.uc` | 17 | `[1, 2, 3, 4, 5]` |
+| `examples\fib.uc` | 38 | `[10, 55]` |
+
+A suíte terminou com `=== TODOS OS TESTES FORAM CONCLUIDOS COM SUCESSO ===`. Em `expr`, `decl`, `precedencia` e `if`, a saída `[]` indica que os programas compilam e executam sem erro no MEPA, mas não imprimem valores; a verificação dos valores está nas subseções a seguir.
+
+Saída completa do terminal:
+
+```
+> python tests/test_suite.py
+=== EXECUTANDO BATERIA DE TESTES DO COMPILADOR ===
+
+[TESTE] Compilando examples\expr.uc...
+  Compilado com sucesso (7 instrucoes emitidas).
+  Executando no MEPA (mepa\mepa_pt.py)...
+  SUCESSO! Saida MEPA: []
+
+[TESTE] Compilando examples\decl.uc...
+  Compilado com sucesso (4 instrucoes emitidas).
+  Executando no MEPA (mepa\mepa_pt.py)...
+  SUCESSO! Saida MEPA: []
+
+[TESTE] Compilando examples\precedencia.uc...
+  Compilado com sucesso (20 instrucoes emitidas).
+  Executando no MEPA (mepa\mepa_pt.py)...
+  SUCESSO! Saida MEPA: []
+
+[TESTE] Compilando examples\if.uc...
+  Compilado com sucesso (14 instrucoes emitidas).
+  Executando no MEPA (mepa\mepa_pt.py)...
+  SUCESSO! Saida MEPA: []
+
+[TESTE] Compilando examples\while.uc...
+  Compilado com sucesso (18 instrucoes emitidas).
+  Executando no MEPA (mepa\mepa_pt.py)...
+  SUCESSO! Saida MEPA: [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+
+[TESTE] Compilando examples\break.uc...
+  Compilado com sucesso (24 instrucoes emitidas).
+  Executando no MEPA (mepa\mepa_pt.py)...
+  SUCESSO! Saida MEPA: [1, 2, 3, 4, 5]
+
+[TESTE] Compilando examples\dowhile.uc...
+  Compilado com sucesso (17 instrucoes emitidas).
+  Executando no MEPA (mepa\mepa_pt.py)...
+  SUCESSO! Saida MEPA: [1, 2, 3, 4, 5]
+
+[TESTE] Compilando examples\fib.uc...
+  Compilado com sucesso (38 instrucoes emitidas).
+  Executando no MEPA (mepa\mepa_pt.py)...
+  SUCESSO! Saida MEPA: [10, 55]
+
+=== TODOS OS TESTES FORAM CONCLUIDOS COM SUCESSO ===
+```
+
+### 3.2 Passo 1: análise léxica
 Para o trecho `int a; a = 1 + 2;`:
 ```
   1 INT      'int'
@@ -67,10 +147,10 @@ Para o trecho `int a; a = 1 + 2;`:
   1 NUM      2
   1 ';'      ';'
 ```
-*Constatação:* Palavras reservadas foram adequadamente mapeadas para seus tokens em maiúsculas (`INT`), constantes reais e inteiras diferenciadas, e quebras de linha rastreadas pelo `lineno`.
+*Constatação:* as palavras reservadas são mapeadas para tokens em maiúsculas (`INT`) e as quebras de linha são rastreadas por `lineno` (`t_newline`).
 
-### 3.2 Passo 2: Precedência de Expressões
-Com o programa `exemplos/precedencia.uc`:
+### 3.3 Passo 2: precedência de expressões
+Com `examples/precedencia.uc`:
 ```c
 int a; int b;
 a = 1; b = 2;
@@ -98,59 +178,50 @@ CRCT 3
 MULT
 ARMZ 0,0	; a
 ```
-*Evidência:* No primeiro caso (`a + b * 3`), a instrução `MULT` é emitida antes de `SOMA`. No segundo caso com parênteses (`(a + b) * 3`), a instrução `SOMA` é emitida antes de `MULT`.
+*Evidência:* em `a + b * 3`, o `MULT` é emitido antes do `SOMA`; em `(a + b) * 3`, o `SOMA` é emitido antes do `MULT`.
 
-### 3.3 Passo 3: Memória e Declarações
-Com o programa `exemplos/decl.uc`:
+Valores no MEPA, com `examples/precedencia_print.uc` (imprime `a` após cada atribuição): saída obtida `[7, 27]`. Isso comprova que o compilador respeitou a precedência da multiplicação sobre a soma no primeiro caso (`1 + 2 * 3 = 7`) e a precedência dos parênteses no segundo (`(7 + 2) * 3 = 27`).
+
+### 3.4 Passo 3: memória e declarações
+Com `examples/decl.uc`:
 ```c
 {
     int a;
     float x;
 }
 ```
-Saída:
+Código gerado:
 ```
 AMEM 4	; a address: 0
 AMEM 8	; x address: 4
 ```
-*Evidência:* Variável `int` aloca 4 bytes (deslocamento 0), e variável `float` aloca 8 bytes (deslocamento 4), avançando o offset global para 12.
-Quando uma variável não declarada é utilizada (`a = 5;`), o compilador encerra a execução com mensagem legível e código de saída 1:
+*Evidência:* `int` aloca 4 bytes (deslocamento 0) e `float` 8 bytes (deslocamento 4), levando o `OFFSET` global a 12.
+
+Uso de variável não declarada (`a = 5;`): o compilador encerra com mensagem legível e código de saída 1, sem falha do Python:
 ```
 linha 1: variavel nao declarada
 ```
+Atribuição `a = 1 + 2;` com `examples/expr_print.uc` (imprime `a` em seguida): saída obtida `[3]`.
 
-### 3.4 Passo 4 e 5: Laço `while` e `break`
-Execução de `exemplos/while.uc` via MEPA:
-```bash
-python lab1_tds.py exemplos/while.uc > mvpOutput/while.txt
-python mepa_pt.py --progfile mvpOutput/while.txt --silent
-```
-Saída produzida:
-```
-10
-9
-8
-7
-6
-5
-4
-3
-2
-1
-```
+### 3.5 Passo 4: `if` / `else`
+O `examples/if.uc` da suíte compila (14 instruções) e executa sem erro no MEPA. Para provar os dois caminhos:
 
-Execução de `exemplos/break.uc` (com interrupção quando $k > 5$):
-Saída produzida:
-```
-1
-2
-3
-4
-5
-```
+* `examples/if_else_pos.uc` (`a = 5`): saída obtida `[1]`
+* `examples/if_else_neg.uc` (`a = -5`): saída obtida `[2]`
+* `examples/if_aninhado.uc`: saída obtida `[1, 9]`
 
-### 3.5 Desafio 4.1: `do-while`
-Execução de `exemplos/dowhile.uc`:
+Isso mostra que os desvios executam os ramos corretos nos dois caminhos e que a pilha `IF_PENDING` gerenciou o aninhamento sem perder os rótulos do `if` externo.
+
+* Trecho do código gerado mostrando o `DSVF` entre a condição e o corpo: **[PREENCHER: colar o trecho real, exatamente como o compilador gerou]**
+
+### 3.6 Passo 5: `while` e `break`
+Saídas da suíte (3.1): `while.uc` imprime `[10, 9, 8, 7, 6, 5, 4, 3, 2, 1]` e `break.uc` (interrompe o laço quando `k > 5`) imprime `[1, 2, 3, 4, 5]`.
+
+* `break` em laços aninhados, `examples/break_aninhado.uc`: **[PREENCHER: saída obtida — esperado 11, 21, 31]**
+* `break` fora de laço, `examples/break_fora.uc`: **[PREENCHER: mensagem de erro obtida]**
+
+### 3.7 Desafio 4.1: `do-while`
+`examples/dowhile.uc`:
 ```c
 {
     int x;
@@ -161,53 +232,41 @@ Execução de `exemplos/dowhile.uc`:
     } while (x <= 5);
 }
 ```
-Saída MEPA:
-```
-1
-2
-3
-4
-5
-```
-Verificou-se também que, com condição inicialmente falsa (`x = 99; do { print(x); } while (x < 10);`), o corpo executa rigorosamente 1 vez antes de sair.
+Saída do MEPA (3.1): `[1, 2, 3, 4, 5]`.
 
-### 3.6 Desafio 4.2: Leitura (`read`), Escrita (`print`) e Fibonacci
-Execução de `exemplos/fib.uc` com entrada `10`:
-```bash
-echo 10 | python mepa_pt.py --progfile exemplos/fib.mepa --silent
-```
-Saída produzida:
-```
-10
-55
-```
-Critério cumprido com perfeição: o programa leu a entrada, calculou a sequência e imprimiu `10` e `55`.
+Com condição inicialmente falsa (`examples/dowhile_falso.uc`, `x = 99`, `while (x < 10)`): saída obtida `[99]`. Como o teste lógico fica no final do laço, o corpo imprimiu o valor inicial 99 uma única vez antes de a condição (`x < 10`) ser avaliada como falsa e a execução terminar.
+
+### 3.8 Desafio 4.2: `read`, `print` e Fibonacci
+`examples/fib.uc` com entrada `10` produz `[10, 55]` na suíte (3.1), cumprindo o critério do enunciado.
+**[PREENCHER: como a entrada `10` é fornecida ao MEPA no `test_suite.py`.]**
 
 ---
 
-## 4. Desafio 4.3 — Tabela de Correspondência Estruturada
+## 4. Desafio 4.3 — Tabela de correspondência
 
-Comparação entre as regras semânticas do compilador de referência em Java (`Parser.java`) e o compilador desenvolvido em Python/PLY (`lab1_tds.py`):
+Programa escolhido: `while.uc`, de `uc-full/examples/`.
 
-| Produção da Gramática | Implementação no `Parser.java` | Regra e Ações no `lab1_tds.py` |
+**[CONFERIR: a coluna do `Parser.java` abaixo precisa ser verificada linha a linha no código real. O roteiro só confirma `decls()`, `Id`, `top.put()`, `case Tag.IF` e o laço `while` em `expr()`; nomes como `match('+')`, `newLabel()` e `case Tag.WHILE` não aparecem nele.]**
+
+| Produção | Implementação no `Parser.java` | Regra e ações no compilador PLY |
 | :--- | :--- | :--- |
-| `stmt : if_head stmt` | No método `stmt()`, bloco `case Tag.IF:` que chama `bool()`, gera rótulo de saída e emite desvio | `p_if_head` emite `DSVF L1`; `p_stmt_if` emite `L1:` |
-| `stmt : if_head stmt ELSE else_mark stmt` | No `case Tag.IF:`, quando há `else`, emite desvio incondicional `DSVS` e aloca dois rótulos | `p_else_mark` emite `DSVS L2` e `L1:`; `p_stmt_if_else` emite `L2:` |
-| `stmt : while_head stmt` | No método `stmt()`, bloco `case Tag.WHILE:` aloca rótulo inicial e final, testa condição e salta | `p_while_start` emite `L1:`; `p_while_head` emite `DSVF L2`; `p_stmt_while` emite `DSVS L1` e `L2:` |
-| `stmt : BREAK ';'` | Valida se está dentro de laço (`savedStmt`), mas não emitia o `DSVS` na IDE | `p_stmt_break` consulta `LOOP_EXITS` e emite `DSVS L{exit}` |
-| `expr : expr + term` | Laço `while (match('+'))` em `expr()` emitindo `SOMA` após o termo | `p_expr_plus` com redução pós-ordem emitindo `SOMA` |
-| `expr : expr - term` | Laço `while (match('-'))` em `expr()` emitindo `SUBT` | `p_expr_minus` emitindo `SUBT` |
-| `term : term * unary` | Laço `while (match('*'))` em `term()` emitindo `MULT` | `p_term_times` emitindo `MULT` |
-| `term : term / unary` | Laço `while (match('/'))` em `term()` emitindo `DIVI` | `p_term_divi` emitindo `DIVI` |
-| `decl : type ID ';'` | Método `decls()` instanciando `Id`, chamando `top.put()` e emitindo `AMEM` | `p_decl` calculando largura, salvando em `SYMBOLS` e emitindo `AMEM` |
-| `stmt : READ '(' ID ')' ';'` | Reconhece token `READ`, emite `LEIT` e `ARMZ` na variável | `p_stmt_read` verifica declaração, emite `LEIT` e `ARMZ` |
-| `stmt : PRINT '(' bool ')' ';'` | Reconhece token `PRINT`, avalia expressão e emite `IMPR` | `p_stmt_print` reduz expressão e emite `IMPR` |
+| `stmt : if_head stmt` | `stmt()`, `case Tag.IF:` — chama `bool()`, gera rótulo de saída e emite desvio | `p_if_head` emite `DSVF L1`; `p_stmt_if` emite `L1:` |
+| `stmt : if_head stmt ELSE else_mark stmt` | `case Tag.IF:` com `else`: emite `DSVS` e aloca dois rótulos | `p_else_mark` emite `DSVS L2` e `L1:`; `p_stmt_if_else` emite `L2:` |
+| `stmt : while_head stmt` | `stmt()`, `case Tag.WHILE:` — rótulos inicial e final, testa a condição e salta | `p_while_start` emite `L1:`; `p_while_head` emite `DSVF L2`; `p_stmt_while` emite `DSVS L1` e `L2:` |
+| `stmt : BREAK ';'` | Valida se está dentro de laço, mas não emitia o `DSVS` na IDE | `p_stmt_break` consulta `LOOP_EXITS` e emite `DSVS L{exit}` |
+| `expr : expr + term` | laço `while (match('+'))` em `expr()`, emite `SOMA` | `p_expr_plus` (pós-ordem) emite `SOMA` |
+| `expr : expr - term` | laço `while (match('-'))` em `expr()`, emite `SUBT` | `p_expr_minus` emite `SUBT` |
+| `term : term * unary` | laço `while (match('*'))` em `term()`, emite `MULT` | `p_term_times` emite `MULT` |
+| `term : term / unary` | laço `while (match('/'))` em `term()`, emite `DIVI` | `p_term_divi` emite `DIVI` |
+| `decl : type ID ';'` | `decls()`: instancia `Id`, `top.put()` e emite `AMEM` | `p_decl` calcula a largura, grava em `SYMBOLS` e emite `AMEM` |
+| `stmt : READ '(' ID ')' ';'` | reconhece `READ`, emite `LEIT` e `ARMZ` | `p_stmt_read` verifica a declaração, emite `LEIT` e `ARMZ` |
+| `stmt : PRINT '(' bool ')' ';'` | reconhece `PRINT`, avalia e emite `IMPR` | `p_stmt_print` emite `IMPR` |
 
 ---
 
-## 5. Desafio 4.4 — Auditoria de Código Gerado por IA
+## 5. Desafio 4.4 — Auditoria de código gerado por IA
 
-Trecho sob auditoria:
+Trecho auditado (fornecido no roteiro):
 ```python
 def p_stmt_while(p):
     """stmt : WHILE '(' bool ')' stmt"""
@@ -218,17 +277,15 @@ def p_stmt_while(p):
     emit(f"L{l2}:")      # (D)
 ```
 
-### 1. Identificação de Erros
-1. **Erro de escopo/definição:** A variável `l2` é referenciada nas linhas (B) e (D), porém nunca foi instanciada com `new_label()`, provocando um `UnboundLocalError` / `NameError` em tempo de execução no Python.
-2. **Erro gravíssimo de momento de redução e ordem de emissão:** No PLY, o corpo de uma função `p_*` é executado **apenas quando a produção inteira é reduzida**, ou seja, **após** todo o `stmt` filho já ter sido analisado e reduzido. No código auditado:
-   - O rótulo `L1:` (início do laço) e o desvio condicional `DSVF L2` sairiam **depois** das instruções do corpo do laço, quando deveriam sair antes.
-   - O corpo do laço seria executado incondicionalmente na entrada e o salto nunca desviaria o corpo quando a condição fosse falsa.
+### 5.1 Erros identificados
+1. **Variável não definida:** `l2` é usada em (B) e (D), mas nunca criada com `new_label()`; o Python lançaria `UnboundLocalError`/`NameError`.
+2. **Momento da redução e ordem de emissão:** no PLY, o corpo de `p_*` só roda quando a produção inteira é reduzida, isto é, depois que o `stmt` filho já foi reduzido. Assim, `L1:` e `DSVF L2` sairiam **depois** das instruções do corpo, quando deveriam sair antes. O corpo executaria sempre uma vez e o desvio de saída nunca evitaria o corpo.
+3. **Condição nunca reavaliada:** como `L1:` seria emitido depois do código da condição, o `DSVS L1` voltaria para um ponto posterior ao teste; a condição não seria reavaliada, e o `DSVF` seguinte leria da pilha um valor que não é o resultado do teste.
 
-### 2. Por que o código parecia plausível?
-O código parece plausível porque sua sequência visual `(A) L1: -> (B) DSVF L2 -> corpo -> (C) DSVS L1 -> (D) L2:` reproduz a sequência teórica de um laço descrita nos livros-texto de compiladores (como no livro do Dragão). No entanto, o modelo de linguagem ignorou a semântica bottom-up do analisador sintático LALR do PLY, em que ações não podem ficar "no meio" de uma regra a menos que sejam decompostas em regras não-terminais auxiliares.
+### 5.2 Por que o código parece plausível
+A sequência visual `(A) L1: → (B) DSVF L2 → corpo → (C) DSVS L1 → (D) L2:` reproduz o padrão de tradução de laço dos livros-texto. O que falta é a semântica *bottom-up* do LALR do PLY: uma ação não pode ficar "no meio" da produção, a menos que seja separada em não terminais auxiliares.
 
-### 3. Versão Correta
-A versão correta, comprovada e funcional no MEPA:
+### 5.3 Versão correta
 ```python
 WHILE_PENDING = []
 LOOP_EXITS = []
@@ -252,22 +309,42 @@ def p_stmt_while(p):
     emit(f"DSVS L{l1}")
     emit(f"L{l2}:")
 ```
+Comprovação no MEPA: `while.uc` imprime `[10, 9, 8, 7, 6, 5, 4, 3, 2, 1]` (3.1).
+**[PREENCHER (opcional, mas recomendado): saída obtida ao rodar a versão errada do trecho auditado, para mostrar a falha.]**
 
 ---
 
-## 6. Divergências com o Compilador de Referência
+## 6. Divergências em relação ao compilador de referência
 
-1. **Numeração de Rótulos:** A ordem e numeração incremental dos rótulos (`L1`, `L2`, etc.) varia de acordo com a sequência exata de reduções no autômato sintático, o que é natural e irrelevante para a semântica do programa.
-2. **Ponteiros Temporários (`temp`):** O compilador Java de referência aloca posições extras com a diretiva `AMEM 4 ; temp (ponteiro)`. Conforme instruído na Seção 11.2 do roteiro, esse detalhe do gerador Java é dispensável na nossa tradução e foi omitido.
-3. **Melhoria no comando `break`:** Conforme documentado na Seção 10.2, o compilador $\mu\text{C}$ de referência apenas validava a presença de `break` em um laço, mas deixava de emitir o `DSVS` de escape. No nosso compilador, o desvio para o rótulo de saída do laço mais interno é emitido corretamente, interrompendo o laço no momento esperado.
+Para cada programa de teste, comparamos o código MVP do nosso compilador com o da referência (`uc-full`), ignorando comentários, a linha `AMEM 4 ; temp` e a numeração de rótulos (Seção 11.2 do roteiro).
+
+| Programa | Resultado da comparação | Divergências reais e explicação |
+|---|---|---|
+| `expr.uc` | **[PREENCHER]** | **[PREENCHER]** |
+| `decl.uc` | **[PREENCHER]** | **[PREENCHER]** |
+| `precedencia.uc` | **[PREENCHER]** | **[PREENCHER]** |
+| `if.uc` | **[PREENCHER]** | **[PREENCHER]** |
+| `while.uc` | **[PREENCHER]** | **[PREENCHER]** |
+| `break.uc` | **[PREENCHER]** | **[PREENCHER]** |
+| `dowhile.uc` | **[PREENCHER]** | **[PREENCHER]** |
+| `fib.uc` | **[PREENCHER]** | **[PREENCHER]** |
+
+Pontos gerais (**[CONFERIR: manter cada item só se a comparação acima confirmar]**):
+1. **Numeração de rótulos:** varia com a sequência de reduções do autômato; não altera a semântica dos desvios.
+2. **Ponteiro temporário:** o gerador Java emite `AMEM 4 ; temp (ponteiro)`. Conforme a Seção 11.2, esse detalhe foi ignorado na comparação e não é emitido pelo nosso compilador.
+3. **Melhoria no `break`:** a referência apenas valida a presença do `break` no laço, sem emitir o `DSVS` (Seção 10.2). O nosso emite o desvio para o rótulo de saída do laço mais interno.
 
 ---
 
-## 7. Dificuldades Encontradas e Soluções
+## 7. Dificuldades encontradas e soluções
 
-1. **Definição da regra inicial no PLY:** Inicialmente, a regra auxiliar `empty` havia sido declarada antes de `p_program` e sem a variável `start = 'program'`. Como consequência, o PLY assumia `empty` como axioma da gramática, gerando erros de sintaxe imediatos em qualquer programa não vazio. A solução foi explicitar `start = 'program'` e garantir a ordem estrutural.
-2. **Tratamento de finais de linha no Lexer:** No arquivo original, `\n` estava inserido na string `t_ignore`, fazendo com que `lineno` nunca fosse incrementado e reportasse linha 1 para qualquer erro. Substituiu-se pela função `t_newline` com atualização de `t.lexer.lineno += len(t.value)`.
-3. **Mapeamento das Instruções MEPA:** Instruções como `<=`, `<`, `>`, e `-` estavam gerando mnemônicos inconsistentes no código prévio (como `CMEG` duplicado para `==` e `<=`, e `CMMEN` em vez de `CMME`). Todas as instruções foram alinhadas com a especificação original do MEPA 5.0.
+1. **Regra inicial no PLY:** a regra auxiliar `empty` foi declarada antes de `p_program` e sem `start = 'program'`; o PLY a tomou como axioma, e qualquer programa não vazio gerava erro de sintaxe. Solução: declarar `start = 'program'` e ajustar a ordem das regras. **[PREENCHER: saída do erro, se foi guardada; senão, dizer que a saída original não foi registrada.]**
+2. **Fim de linha no lexer:** `\n` estava em `t_ignore`, então `lineno` nunca era incrementado e todo erro apontava a linha 1. Solução: função `t_newline` com `t.lexer.lineno += len(t.value)`. **[PREENCHER: saída do erro, se foi guardada.]**
+3. **Mnemônicos do MEPA:** instruções relacionais saíam inconsistentes (por exemplo `CMEG` duplicado para `==` e `<=`, e `CMMEN` no lugar de `CMME`). Solução: alinhar todas com a especificação do MEPA 5.0. **[CONFERIR: descrevam exatamente o que ocorreu; versões anteriores do texto citavam também `CMAI`.]**
+
+**[PREENCHER: o que são o "arquivo original" e o "código prévio" mencionados nos itens 2 e 3 (por exemplo, uma versão anterior da própria equipe).]**
+
+**[PREENCHER: o que ficou incompleto ou o que a equipe faria diferente.]**
 
 ---
 
@@ -275,6 +352,8 @@ def p_stmt_while(p):
 
 Em conformidade com as diretrizes da Seção 14 deste laboratório e a escala AIAS:
 
-* **Passos 1 a 3 (Nível 2 — Auxiliar):** Ferramentas de IA foram consultadas para esclarecimento de recursos da biblioteca PLY, documentação de métodos léxicos/sintáticos e sintaxe de tratamento de erros.
-* **Passos 4 e 5 (Nível 1 — Sem IA):** A lógica conceitual de divisão das produções em regras auxiliares marcadoras (`if_head`, `else_mark`, `while_start`, `while_head`), bem como o gerenciamento das pilhas de atributos herdados (`IF_PENDING`, `WHILE_PENDING`, `LOOP_EXITS`), foi desenvolvida, compreendida e estruturada pela equipe.
-* **Desafio 4.4 (Nível 4 — Auditor):** A equipe atuou como auditora crítica do código gerado por modelo de linguagem, demonstrando proficiência ao identificar os erros semânticos de temporização de redução LALR e formulando a correção técnica validada na MEPA.
+*Declaração individual:*  
+**Fabrício Rickelmer Souza Duarte:** Confirmo que todas as ações e decisões relatadas foram rigorosamente compreendidas e implementadas, garantindo o domínio pleno sobre a tradução dirigida por sintaxe e a geração de código para a máquina de pilha MEPA.
+**Esther de Faria** Declaro que contribui para a elaboração dos Passos 1 a 3 que utiliza da IA como auxiliar para compreender mais sobre o uso da biblioteca ply, o que me proporcionou um maior aprendizado a cerca do tema. 
+**Luiza Alves de Oliveira Vieira** Também confirmo que trabalhei na implementação dos Passos 4 e 5 para implementar as regras auxiliares marcadores, assim como o meu colega Fabrício, ajudei-o no gerenciamento das pilhas de atributos herdados (`IF_PENDING`, `WHILE_PENDING`, `LOOP_EXITS`).
+**Thamara Luiza Bicalho Oliveira Silva**: Declaro que atuei no nível 4 como Auditora, analisando criticamente o código que foi gerado pela IA, modificando os seus erros e aprendendo com eles, de maneira que o trabalho foi entregue com êxito.
