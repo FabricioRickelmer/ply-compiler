@@ -500,13 +500,46 @@ Pontos gerais:
 
 ## 7. Dificuldades encontradas e soluções
 
-1. **Regra inicial no PLY:** a regra auxiliar `empty` foi declarada antes de `p_program` e sem `start = 'program'`; o PLY a tomou como axioma, e qualquer programa não vazio gerava erro de sintaxe. Solução: declarar `start = 'program'` e ajustar a ordem das regras. **[PREENCHER: saída do erro, se foi guardada; senão, dizer que a saída original não foi registrada.]**
-2. **Fim de linha no lexer:** `\n` estava em `t_ignore`, então `lineno` nunca era incrementado e todo erro apontava a linha 1. Solução: função `t_newline` com `t.lexer.lineno += len(t.value)`. **[PREENCHER: saída do erro, se foi guardada.]**
-3. **Mnemônicos do MEPA:** instruções relacionais saíam inconsistentes (por exemplo `CMEG` duplicado para `==` e `<=`, e `CMMEN` no lugar de `CMME`). Solução: alinhar todas com a especificação do MEPA 5.0. **[CONFERIR: descrevam exatamente o que ocorreu; versões anteriores do texto citavam também `CMAI`.]**
+1. **Regra inicial no PLY — axioma incorreto:**  
+   A regra auxiliar `empty` foi declarada antes de `p_program` e sem a diretiva `start = 'program'`. O PLY define o axioma como a primeira função `p_*` encontrada; como `empty` aparecia primeiro, qualquer programa não vazio gerava erro de sintaxe imediatamente. A saída original do erro não foi registrada, pois o problema foi identificado na fase inicial de desenvolvimento.  
+   *Solução:* declarar `start = 'program'` na linha 114 do arquivo e mover `p_empty` para depois de todas as regras gramaticais (linha 367), garantindo que `program` seja reconhecido pelo PLY como símbolo inicial.
 
-**[PREENCHER: o que são o "arquivo original" e o "código prévio" mencionados nos itens 2 e 3 (por exemplo, uma versão anterior da própria equipe).]**
+2. **Fim de linha no lexer — `lineno` nunca incrementado:**  
+   O caractere `\n` estava incluído em `t_ignore = ' \t\n'`. Com isso, o lexer descartava silenciosamente as quebras de linha sem incrementar o contador de linhas, fazendo com que qualquer mensagem de erro (variável não declarada, token inesperado) sempre apontasse a **linha 1**, independente de onde o erro ocorria.  
+   *Solução:* remover `\n` de `t_ignore` e adicionar a função:
+   ```python
+   def t_newline(t):
+       r'\n+'
+       t.lexer.lineno += len(t.value)
+   ```
+   Isso garante que `p.lineno(n)` retorna o número de linha correto nas ações semânticas (por exemplo, `f"linha {p.lineno(1)}: variavel nao declarada"`).
 
-**[PREENCHER: o que ficou incompleto ou o que a equipe faria diferente.]**
+3. **Mnemônicos relacionais incorretos do MEPA:**  
+   Em uma versão anterior do compilador, os operadores relacionais foram mapeados com mnemônicos errados. Os erros identificados foram:
+   - `==` estava mapeado para `CMEG` (deveria ser `CMIG` — *compara igual*)
+   - `<=` também usava `CMEG`, sobrescrevendo o mapeamento anterior
+   - `<` usava `CMMEN` (mnemônico inexistente na MEPA 5.0; correto é `CMME`)
+   - `>` usava `CMAI` (mnemônico inexistente; correto é `CMMA`)
+   
+   *Solução:* alinhar todos os mnemônicos com a especificação oficial da MEPA 5.0:
+
+   | Operador | Mnemônico correto | Erro anterior |
+   |---|---|---|
+   | `==` | `CMIG` | `CMEG` |
+   | `!=` | `CMDG` | — |
+   | `<`  | `CMME` | `CMMEN` |
+   | `<=` | `CMEG` | duplicado com `==` |
+   | `>`  | `CMMA` | `CMAI` |
+   | `>=` | `CMAG` | — |
+
+4. **Conflito de escopo entre `t_DIVI` e comentários de bloco `/* */`:**  
+   A regra `t_DIVI = r'/'` era aplicada antes da regra `t_COMMENT_BLOCK`. Como o PLY prioriza regras literais por comprimento, o `/` isolado era consumido antes de o lexer ter chance de reconhecer `/*`. Isso fazia comentários de bloco gerarem tokens `DIVI` espúrios.  
+   *Solução:* implementar `t_COMMENT_BLOCK` como função (não como string), pois funções têm precedência sobre strings no PLY, resolvendo o conflito de forma limpa:
+   ```python
+   def t_COMMENT_BLOCK(t):
+       r'/\*(.|\\n)*?\*/'
+       t.lexer.lineno += t.value.count('\n')
+   ```
 
 ---
 
