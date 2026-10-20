@@ -354,6 +354,9 @@ Em conformidade com as diretrizes da Seção 14 deste laboratório e a escala AI
 
 *Declaração individual:*  
 **Fabrício Rickelmer Souza Duarte:** Confirmo que todas as ações e decisões relatadas foram rigorosamente compreendidas e implementadas, garantindo o domínio pleno sobre a tradução dirigida por sintaxe e a geração de código para a máquina de pilha MEPA.
+
 **Esther de Faria** Declaro que contribui para a elaboração dos Passos 1 a 3 que utiliza da IA como auxiliar para compreender mais sobre o uso da biblioteca ply, o que me proporcionou um maior aprendizado a cerca do tema. 
+
 **Luiza Alves de Oliveira Vieira** Também confirmo que trabalhei na implementação dos Passos 4 e 5 para implementar as regras auxiliares marcadores, assim como o meu colega Fabrício, ajudei-o no gerenciamento das pilhas de atributos herdados (`IF_PENDING`, `WHILE_PENDING`, `LOOP_EXITS`).
+
 **Thamara Luiza Bicalho Oliveira Silva**: Declaro que atuei no nível 4 como Auditora, analisando criticamente o código que foi gerado pela IA, modificando os seus erros e aprendendo com eles, de maneira que o trabalho foi entregue com êxito.
