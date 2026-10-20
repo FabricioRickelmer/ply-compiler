@@ -293,24 +293,54 @@ LOOP_EXITS = []
 def p_while_start(p):
     """while_start : """
     l1, l2 = new_label(), new_label()
-    emit(f"L{l1}:")
+    emit(f"L{l1}:")          # (A) rótulo de retorno — emitido ANTES do teste
     WHILE_PENDING.append((l1, l2))
-    LOOP_EXITS.append(l2)
+    LOOP_EXITS.append(l2)    # permite que break encontre o rótulo de saída
 
 def p_while_head(p):
     """while_head : WHILE '(' while_start bool ')'"""
     l1, l2 = WHILE_PENDING[-1]
-    emit(f"DSVF L{l2}")
+    emit(f"DSVF L{l2}")      # (B) desvio condicional — emitido APÓS a condição e ANTES do corpo
 
 def p_stmt_while(p):
     """stmt : while_head stmt"""
     l1, l2 = WHILE_PENDING.pop()
     LOOP_EXITS.pop()
-    emit(f"DSVS L{l1}")
-    emit(f"L{l2}:")
+    emit(f"DSVS L{l1}")      # (C) retorno ao início do laço
+    emit(f"L{l2}:")           # (D) rótulo de saída
 ```
-Comprovação no MEPA: `while.uc` imprime `[10, 9, 8, 7, 6, 5, 4, 3, 2, 1]` (3.1).
-**[PREENCHER (opcional, mas recomendado): saída obtida ao rodar a versão errada do trecho auditado, para mostrar a falha.]**
+
+**Por que a decomposição em três regras funciona:**
+
+A produção original `WHILE '(' bool ')' stmt` seria reduzida apenas **depois** que o `stmt` inteiro já foi traduzido. Ao decompor em `while_start` (vazio, antes do `bool`) e `while_head` (após o `bool`), o PLY executa cada ação no momento exato da sua redução no autômato LALR:
+
+| Momento da redução | Regra | Instrução emitida |
+|---|---|---|
+| Antes de analisar a condição | `while_start :` | `L1:` |
+| Após reduzir a condição (`bool`) | `while_head : WHILE '(' while_start bool ')'` | `DSVF L2` |
+| Após reduzir o corpo (`stmt`) | `stmt : while_head stmt` | `DSVS L1` e `L2:` |
+
+**Código MEPA gerado para `while.uc` (contador regressivo de 10 a 1):**
+```
+AMEM 4	; n address: 0
+CRCT 10
+ARMZ 0,0	; n
+L1:              ← (A) while_start emite o rótulo de retorno
+CRVL 0,0	; n
+CRCT 0
+CMMA             ← condição: n > 0
+DSVF L2          ← (B) while_head emite o desvio condicional de saída
+CRVL 0,0	; n
+IMPR             ← corpo do laço
+CRVL 0,0	; n
+CRCT 1
+SUBT
+ARMZ 0,0	; n
+DSVS L1          ← (C) retorno ao início
+L2:              ← (D) rótulo de saída
+```
+
+Comprovação no MEPA: `while.uc` produz a saída `[10, 9, 8, 7, 6, 5, 4, 3, 2, 1]`, confirmada na suíte de testes (Seção 3.1).
 
 ---
 
