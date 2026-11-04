@@ -1,6 +1,8 @@
 **/desktop.ini
 __pycache__/
 *.pyc
+*.class
+*.mepa
 parsetab.py
 parser.out
 desktop.ini

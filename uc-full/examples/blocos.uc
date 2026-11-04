@@ -1,0 +1,10 @@
+{
+    int a;
+    a = 1;
+    {
+        int a;
+        a = 2;
+        print(a);
+    }
+    print(a);
+}
