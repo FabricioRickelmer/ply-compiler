@@ -199,7 +199,34 @@ if r_comp.returncode == 0:
     else:
         print(f"  [FALHA] Seção 2.3: esperado [2, 1], obtido {val}")
 
-print(f"\nTotal Desafios aprovados: {desafios_ok}/3\n")
+# Checklist Seção 5: do-while executando ao menos uma vez com condição falsa
+ddo_code = """{
+    int x; x = 99;
+    do {
+        print(x);
+    } while (false);
+}"""
+tmp_uc = tempfile.NamedTemporaryFile('w', suffix='.uc', delete=False, encoding='utf-8')
+tmp_uc.write(ddo_code)
+tmp_uc.close()
+r_comp = subprocess.run([sys.executable, COMPILER, tmp_uc.name],
+                        capture_output=True, text=True, encoding='utf-8', errors='replace', env=my_env)
+os.remove(tmp_uc.name)
+if r_comp.returncode == 0:
+    tmp_mepa = tempfile.NamedTemporaryFile('w', suffix='.mepa', delete=False, encoding='utf-8')
+    tmp_mepa.write(r_comp.stdout)
+    tmp_mepa.close()
+    r_mepa = subprocess.run([sys.executable, MEPA, '--progfile', tmp_mepa.name, '--silent'],
+                            capture_output=True, text=True, encoding='utf-8', errors='replace')
+    os.remove(tmp_mepa.name)
+    val = [int(float(x.strip())) for x in r_mepa.stdout.strip().splitlines() if x.strip()]
+    if val == [99]:
+        print("  [OK] Seção 5: do-while com condição falsa na entrada executa 1x -> [99]")
+        desafios_ok += 1
+    else:
+        print(f"  [FALHA] Seção 5: esperado [99], obtido {val}")
+
+print(f"\nTotal Desafios aprovados: {desafios_ok}/4\n")
 
 # PARTE 4: BATERIA OFICIAL DE ERROS (7 CASOS)
 ERROR_EXPECTED = {
@@ -231,7 +258,7 @@ for arq in error_files:
 
 print(f"\nTotal erros rejeitados corretamente: {error_ok}/{len(ERROR_EXPECTED)}\n")
 
-if valid_ok == len(VALID_CASES) and fib_ok == len(fib_cases) and desafios_ok == 3 and error_ok == len(ERROR_EXPECTED):
+if valid_ok == len(VALID_CASES) and fib_ok == len(fib_cases) and desafios_ok == 4 and error_ok == len(ERROR_EXPECTED):
     print("=====================================================================")
     print("        TODOS OS TESTES DO LAB 3 PASSARAM COM 100% DE SUCESSO!       ")
     print("=====================================================================")

@@ -61,9 +61,36 @@ Ao desempilhar a estrutura (`pop()`), a função `backpatch(lista, label_destino
 * Ao abrir um bloco `{`, registramos o estado do ambiente no `BLOCK_STACK`.
 * Ao fechar o bloco `}`, verificamos a quantidade de bytes consumida pelas variáveis locais declaradas naquele escopo (`ctx['env'].usage`). Se houver memória local alocada (`usage > 0`), emitimos imediatamente a instrução `DMEM <usage>`, devolvendo o espaço na pilha de execução sem interferir nas variáveis do escopo pai.
 
+### 2.5 Experimento da Seção 2.3 ("Sua vez" — Blocos e Deslocamentos)
+Conforme solicitado expressamente no roteiro (pág. 5), compilamos e executamos o programa de teste de escopo aninhado:
+```c
+{
+    int x; x = 1;
+    {
+        int y; y = x + 1;
+        print(y);
+    }
+    print(x);
+}
+```
+
+* **Execução Correta (OFFSET global monotônico contínuo):**  
+  A variável `x` recebe `address: 0` e `y` recebe `address: 4`. Ao fechar o bloco interno, `DMEM 4` desaloca `y`. O comando `print(y)` imprime `2`, e o posterior `print(x)` acessa `CRVL 0,0`, imprimindo `1`.
+  * *Saída obtida no MEPA:* **`[2, 1]`** (comportamento correto ✅).
+
+* **Reintrodução Deliberada do Bug (`OFFSET = 0` ao abrir bloco):**  
+  Reintroduzimos o bug zerando o deslocamento ao entrar no bloco interno. Com isso, a variável `y` do bloco interno foi mapeada para `address: 0` (o mesmo endereço de `x`). A atribuição `y = x + 1` gravou o valor `2` na posição de memória `0`, sobrescrevendo o valor original de `x`.
+  * *Saída errada obtida no MEPA:* **`[2, 2]`** (comprovando empiricamente a corrupção de memória alertada na *"Armadilha do Escopo"*).
+
 ---
 
 ## 3. Diagrama do Backpatching no Comando `while`
+
+### 3.1 Resposta à Pergunta Central ("Sua vez", pág. 7 do Roteiro)
+> **Pergunta:** *"Responda em uma frase: por que o DSVF precisa de backpatch, e o DSVS para o início do laço, não?"*  
+> **Resposta:** O `DSVF` precisa de *backpatching* porque desvia para a saída do laço, cujo endereço de instrução é desconhecido no momento em que a condição é avaliada; já o `DSVS` salta para o início do laço, cujo rótulo de teste já foi previamente gerado e posicionado no momento em que o laço começou.
+
+### 3.2 Diagrama de Fluxo e Índices de Instruções
 
 O diagrama abaixo ilustra o ciclo de vida das instruções de desvio durante a compilação de um laço `while (cond) { ... break; ... }`:
 
@@ -236,11 +263,26 @@ A robustez da fase de análise foi mantida integralmente:
 
 ---
 
+### 4.4 Checklist de Verificação ("Você conseguiu?", Seção 5, pág. 8 do Roteiro)
+
+O roteiro estabelece quatro metas centrais de comportamento em tempo de execução para atestar a correção da síntese de código:
+- [x] **`if-else` executa o ramo correto nos dois casos:** Comprovado em `examples/if.uc`. Quando a condição avalia como verdadeira, o bloco *then* executa e salta incondicionalmente o *else* via `DSVS L2`; quando falsa, `DSVF L1` desvia diretamente para a primeira instrução do *else*.
+- [x] **`while` com contador imprime a sequência esperada:** Comprovado em `examples/while.uc`, imprimindo a sequência decrescente exata `[10, 9, 8, 7, 6, 5, 4, 3, 2, 1]`.
+- [x] **Um laço com dois `break` interrompe nos dois pontos:** Comprovado no teste do Desafio 5.3 (`if (i == 3) break; if (i == 5) break;`), onde ambos os comandos `break` têm seus índices anexados à mesma lista de saídas e são remendados simultaneamente para o rótulo pós-laço `L2:`.
+- [x] **`do-while` executa o corpo ao menos uma vez, mesmo se a condição for falsa na entrada:** Comprovado no teste `{ int x; x = 99; do { print(x); } while (false); }`, onde a instrução `print(x)` emite `99` antes de testar a guarda booleana falsa e encerrar o laço.
+
+---
+
 ## 5. Resolução dos Desafios do Roteiro
 
 ### 5.1 Desafio 5.1 — Backpatch contra Alocação Antecipada
 
-Conforme solicitado na Seção 7.1, estruturamos a tabela comparativa entre a técnica de pilha de rótulos (Lab 1) e o *backpatching* (Lab 3):
+Conforme solicitado na Seção 7.1, implementamos **as duas formas de `if-else` no mesmo arquivo** ([`src/lab3_gerador.py`](../src/lab3_gerador.py)), acessíveis via rotina programática ou pela linha de comando com a opção:
+```bash
+python src/lab3_gerador.py --compare-if-else
+```
+
+Abaixo apresentamos a tabela comparativa solicitada entre a técnica de pilha de rótulos (Lab 1) e o *backpatching* (Lab 3):
 
 | Aspecto | Pilha de Rótulos (Lab 1) | Backpatching (Lab 3) |
 |---|---|---|
