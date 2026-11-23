@@ -9,90 +9,42 @@
 
 ## 1. Resumo do Projeto
 
-Neste terceiro laboratório da disciplina, concluímos a transição entre a fase de **análise** e a fase de **síntese** do compilador da linguagem $\mu\text{C}$, implementando o módulo [`src/lab3_gerador.py`](../src/lab3_gerador.py) em **Python** com a biblioteca **PLY (Python Lex-Yacc)**, direcionado para a Máquina Virtual de Execução de Programas Abstratos (**MEPA 5.0**).
+Neste terceiro laboratório da disciplina, o compilador para a linguagem $\mu\text{C}$ desenvolvido em **Python** com a biblioteca **PLY (Python Lex-Yacc)** avançou da etapa de análise para a etapa de **Síntese**, implementando a **Geração de Código (MVP)** fundamentada na técnica clássica de **Backpatching (listas de pendências)** para a resolução de desvios para frente em uma única passagem dirigida por sintaxe, com destino à Máquina Virtual de Execução de Programas Abstratos (**MEPA 5.0**).
 
-O foco central deste trabalho foi a resolução elegante de desvios para frente (*forward jumps*) por meio da técnica clássica de **listas de pendências (*backpatching*)**. Em um compilador de uma única passagem (*single-pass*), quando uma instrução de desvio condicional (`DSVF`) ou incondicional (`DSVS`) precisa ser gerada — como no teste de um comando `if`, no encerramento do bloco `then`, na guarda de um laço `while` ou na ocorrência de comandos `break` —, o rótulo de destino ainda não existe na memória do compilador. Em vez de recorrer a passagens adicionais sobre árvores sintáticas abstratas (ASTs) ou a regras intermediárias artificiais na gramática, o compilador emite a instrução de máquina com o campo de endereço vazio, armazena seu índice em uma lista de pendências (*patchlist*) e preenche o operando retroativamente assim que o rótulo definitivo é alcançado.
+Conforme enfatizado pelo roteiro de laboratório:
+> *"Este laboratório continua o Lab 1. Ele assume que você tem um parser PLY que já reconhece declarações, atribuições, if, while e print. Se algum desses passos ficou incompleto, retome antes de seguir: os conceitos deste laboratório se apoiam neles."*
+>
+> *"Até aqui você construiu as fases de análise. Agora vem a síntese: transformar uma árvore já verificada em um programa que executa. E há um problema técnico elegante no caminho — o backpatch — que é a razão pela qual compiladores de verdade conseguem gerar laços e desvios em uma única passagem."*
 
-O projeto contemplou integralmente:
-1. **Infraestrutura de Máquina Virtual à Pilha (MVP):** Manutenção do balanço estrito da pilha de operandos (onde cada subexpressão avaliada consome seus operandos e deixa exatamente um único valor no topo).
-2. **Gerenciamento de Memória e Blocos:** Alocação de variáveis locais com `AMEM` e devolução precisa de memória com `DMEM` no encerramento de cada bloco `{ ... }`, preservando a continuidade do deslocamento global de endereçamento (`GLOBAL_OFFSET`) em blocos aninhados.
-3. **Mecanismo de Backpatching:** Implementação das funções de controle `emit_marked`, `patch`, `backpatch` e `emit_here`, prefixando os rótulos gerados na mesma linha das instruções subsequentes para total conformidade com o MEPA 5.0.
-4. **Comandos de Controle de Fluxo:** Implementação robusta de `if` sem `else`, `if-else`, `while`, `do-while` e comandos `break` com suporte a múltiplos pontos de escape no mesmo laço.
-5. **Teste Integrador (Fibonacci):** Compilação e execução automatizada do algoritmo `fib.uc` no MEPA para as entradas $1$, $10$ e $20$, confrontando o código gerado com o compilador de referência Java oficial.
-6. **Resolução Completa dos Desafios (5.1 a 5.3):**
-   - *Desafio 5.1:* Comparação sistemática e conceitual entre a técnica de pilha de rótulos pré-alocados e o *backpatching*;
-   - *Desafio 5.2:* Diagnóstico experimental do comando `while` com e sem delimitadores de bloco (`{ ... }`), comprovando a origem da instrução `AMEM 4 ; temp (ponteiro)` do compilador Java;
-   - *Desafio 5.3:* Auditoria analítica em Nível 4 sobre o código gerado por modelo de IA, identificando o bug silencioso de indexação `len(CODE)` e implementando proteção contra remendos duplicados.
+No primeiro laboratório, a geração de desvios para estruturas de controle apoiava-se na pré-alocação de rótulos por meio de regras gramaticais intermediárias vazias (*mid-rule actions*). Neste laboratório, o compilador adotou a metodologia utilizada em compiladores industriais (como Yacc e Bison): as instruções de desvio condicional (`DSVF`) e incondicional (`DSVS`) são emitidas com operando em aberto no buffer de código (`CODE`), e seus destinos são remendados retroativamente (*backpatched*) no instante exato em que os rótulos definitivos tornam-se conhecidos.
+
+O projeto contemplou:
+- **Passo 1 (A Máquina Alvo e Balanceamento de Pilha):** modelagem operacional da Máquina Virtual à Pilha (MVP), assegurando que toda subexpressão aritmética, relacional ou lógica deixe rigorosamente um único valor na pilha.
+- **Passo 2 (Gerenciamento de Memória e Blocos):** alocação linear contínua com `AMEM` e devolução precisa de memória com `DMEM` no fechamento de blocos `{ ... }`, preservando o deslocamento global (`GLOBAL_OFFSET`) sem reinício indevido em escopos aninhados.
+- **Passo 3 (Infraestrutura de Backpatching):** implementação das rotinas centrais `emit_marked`, `patch`, `backpatch` e `emit_here`, prefixando rótulos na mesma linha da instrução seguinte para atender à exigência sintática da MEPA 5.0.
+- **Passo 4 (Comandos de Controle de Fluxo):** suporte robusto a `if` simples, `if-else`, laço pré-testado `while`, laço pós-testado `do-while` e comando de interrupção `break` com lista unificada de pendências de saída.
+- **Passo 5 (Execução e Depuração no MEPA 5.0):** conformidade integral com as opções do interpretador oficial (`--silent`, `--limit`, `--debug`), prevenindo laços infinitos e falhas de desbalanceamento de pilha.
+- **Passo 6 (Teste Integrador — Fibonacci):** compilação e execução automatizada do algoritmo `fib.uc` com validação das saídas oficiais para as entradas 1, 10 e 20 na máquina virtual MEPA 5.0.
+- **Desafios 5.1 a 5.3:** implementação comparativa de `if-else` das duas formas no mesmo arquivo (Backpatch vs. Pilha de Rótulos), análise analítica e empírica do comando `while` com e sem delimitadores de bloco `{ ... }` confrontada com o compilador de referência Java, e auditoria crítica de código gerado por inteligência artificial (Nível 4).
 
 ---
 
 ## 2. Decisões de Projeto
 
-### 2.1 Backpatching versus Alocação Antecipada de Rótulos
-* **Alternativa A (Alocação antecipada via regras marcadoras - Lab 1):**  
-  No primeiro laboratório, o compilador resolvia o problema do desvio dividindo a produção sintática em nós auxiliares (ex.: `if_head`, `else_mark`, `while_start`), gerando previamente os rótulos simbólicos (`new_label()`) e empilhando-os em listas globais (`IF_PENDING`, `WHILE_PENDING`).
-  * *Motivo do descarte no Lab 3:* Embora viável para estruturas condicionais simples, a alocação antecipada impõe limitações severas na presença de comandos `break` e em expressões lógicas com curto-circuito. No caso de múltiplos `break` espalhados pelo corpo de um laço, o compilador é incapaz de prever antecipadamente quantas saídas ocorrerão e precisa manter estruturas paralelas complexas. Além disso, regras marcadoras no meio de produções (*mid-rule actions*) podem introduzir conflitos *shift/reduce* indesejados no analisador LALR.
-* **Alternativa B (Escolhida - Backpatching):**  
-  As instruções de desvio são inseridas em uma lista de instruções intermediárias (`CODE`) com operando indefinido (`'arg': None`). O índice da instrução no buffer é retornado por `emit_marked(op)` e anexado a uma lista de pendências associada ao bloco (`'falses'` ou `'exits'`).
-  * *Vantagens:*  
-    1. Desacoplamento completo entre a gramática sintática e a lógica de geração de desvios;
-    2. Suporte trivial a múltiplos comandos `break` no mesmo laço: cada `break` gera um `DSVS` pendente e anexa seu índice à lista `exits` do laço ativo; ao final do laço, um único comando `backpatch(w['exits'], L_fim)` remenda todos os saltos em lote;
-    3. Conformidade direta com a arquitetura dos compiladores de produção descritos por Aho et al. (Livro do Dragão).
+Para cada aspecto arquitetural relevante, registramos as alternativas técnicas analisadas, a alternativa descartada com sua justificativa e a solução escolhida com suas vantagens.
 
-### 2.2 Organização das Listas de Pendências
-Para gerenciar laços e condicionais aninhados de forma estritamente reentrante, utilizamos duas pilhas de dicionários de pendências:
-1. **Pilha de Condicionais (`IFS`):**  
-   Cada estrutura `if` ativa empilha um dicionário `{'falses': [...], 'exits': [...]}`:
-   - `falses`: armazena o índice da instrução `DSVF` emitida após o teste booleano;
-   - `exits`: armazena o índice da instrução `DSVS` emitida ao término do bloco `then` (no caso de `if-else`).
-2. **Pilha de Laços (`WHILES`):**  
-   Cada laço ativo (`while` ou `do-while`) empilha um dicionário `{'begin': label_inicio, 'exits': [...]}`:
-   - `begin`: rótulo fixo de retorno para reavaliação da condição;
-   - `exits`: lista unificada contendo o índice do `DSVF` da guarda do laço somado a todos os índices de `DSVS` provenientes de comandos `break` internos àquele laço.
-   
-Ao desempilhar a estrutura (`pop()`), a função `backpatch(lista, label_destino)` itera sobre todos os índices registrados e atualiza atomicamente o campo de operando de cada instrução pendente.
+### 2.1 Resolução de Desvios para Frente: Pilha de Rótulos Pré-alocados vs. Listas de Pendências (Backpatching)
+* **Alternativa descartada:** alocação prévia de rótulos via regras marcadoras intermediárias vazias (como no Lab 1), invocando `new_label()` antes de conhecer o destino e emitindo instruções completas no cabeçalho.
+  * *Motivo:* a alocação antecipada exige fragmentar produções sintáticas com ações no meio da regra (*mid-rule actions*), introduzindo conflitos *shift/reduce* artificiais na análise LALR. Além disso, torna-se frágil quando há múltiplos comandos `break` espalhados pelo laço, exigindo sincronização complexa.
+* **Escolhida:** técnica clássica de *Backpatching* (Seção 3 do roteiro). A instrução de desvio é inserida no buffer `CODE` com argumento nulo (`'arg': None`) via `emit_marked(op)`, registrando seu índice na lista de pendências (`'falses'` ou `'exits'`).
+* **Vantagem:** desacopla a gramática da emissão dos saltos e permite remendar múltiplos desvios que convergem para o mesmo endereço através de uma única chamada atômica `backpatch(lista, label)`.
 
-### 2.3 Resolução da Armadilha de Rótulos Isolados no MEPA 5.0
-* **O Problema:** A máquina virtual MEPA 5.0 requer obrigatoriamente que qualquer rótulo seja impresso na mesma linha da instrução de execução correspondente (`L1: CRVL 0,4`). Caso um rótulo seja emitido em uma linha própria desacompanhado de comando (`L1:\n`), o interpretador aborta com a mensagem: `Falta código de instrução: L1:`.
-* **Solução Implementada:** Desenvolvemos a rotina de adiamento de rótulos `emit_here(label)`. Em vez de imprimir o rótulo imediatamente, ele é enfileirado na lista global `PENDING_LABELS`. No instante em que a instrução subsequente é emitida (seja ela `CRVL`, `ARMZ`, `DMEM` ou `PARA`), todos os rótulos pendentes são agregados e prefixados na linha (`" ".join(f"{lbl}:" for lbl in labels)`). Caso o programa encerre e haja rótulos remanescentes na saída do último bloco, o compilador anexa o rótulo à instrução `PARA` ou emite uma instrução neutra `NADA`, garantindo que nenhuma linha de rótulo fique vazia.
-
-### 2.4 Desalocação de Memória por Bloco (`DMEM`) e Não Reinício de Deslocamento
-* Conforme formalizado na Seção 2.3 do roteiro, variáveis locais declaradas em blocos aninhados recebem endereços subsequentes e monotônicos através de `GLOBAL_OFFSET`.
-* Ao abrir um bloco `{`, registramos o estado do ambiente no `BLOCK_STACK`.
-* Ao fechar o bloco `}`, verificamos a quantidade de bytes consumida pelas variáveis locais declaradas naquele escopo (`ctx['env'].usage`). Se houver memória local alocada (`usage > 0`), emitimos imediatamente a instrução `DMEM <usage>`, devolvendo o espaço na pilha de execução sem interferir nas variáveis do escopo pai.
-
-### 2.5 Experimento da Seção 2.3 ("Sua vez" — Blocos e Deslocamentos)
-Conforme solicitado expressamente no roteiro (pág. 5), compilamos e executamos o programa de teste de escopo aninhado:
-```c
-{
-    int x; x = 1;
-    {
-        int y; y = x + 1;
-        print(y);
-    }
-    print(x);
-}
-```
-
-* **Execução Correta (OFFSET global monotônico contínuo):**  
-  A variável `x` recebe `address: 0` e `y` recebe `address: 4`. Ao fechar o bloco interno, `DMEM 4` desaloca `y`. O comando `print(y)` imprime `2`, e o posterior `print(x)` acessa `CRVL 0,0`, imprimindo `1`.
-  * *Saída obtida no MEPA:* **`[2, 1]`** (comportamento correto ✅).
-
-* **Reintrodução Deliberada do Bug (`OFFSET = 0` ao abrir bloco):**  
-  Reintroduzimos o bug zerando o deslocamento ao entrar no bloco interno. Com isso, a variável `y` do bloco interno foi mapeada para `address: 0` (o mesmo endereço de `x`). A atribuição `y = x + 1` gravou o valor `2` na posição de memória `0`, sobrescrevendo o valor original de `x`.
-  * *Saída errada obtida no MEPA:* **`[2, 2]`** (comprovando empiricamente a corrupção de memória alertada na *"Armadilha do Escopo"*).
-
----
-
-## 3. Diagrama do Backpatching no Comando `while`
-
-### 3.1 Resposta à Pergunta Central ("Sua vez", pág. 7 do Roteiro)
+### 2.2 Diagrama do Backpatching no Comando `while` e Pergunta Central
+Conforme solicitado na caixa *"Sua vez"* da Seção 3.3 (pág. 7 do roteiro):
 > **Pergunta:** *"Responda em uma frase: por que o DSVF precisa de backpatch, e o DSVS para o início do laço, não?"*  
-> **Resposta:** O `DSVF` precisa de *backpatching* porque desvia para a saída do laço, cujo endereço de instrução é desconhecido no momento em que a condição é avaliada; já o `DSVS` salta para o início do laço, cujo rótulo de teste já foi previamente gerado e posicionado no momento em que o laço começou.
+> **Resposta:** O `DSVF` precisa de *backpatching* porque desvia para a saída do laço, cujo endereço é desconhecido no momento em que a condição é avaliada; já o `DSVS` salta para o início do laço, cujo rótulo de teste já foi previamente gerado e posicionado quando o laço começou.
 
-### 3.2 Diagrama de Fluxo e Índices de Instruções
-
-O diagrama abaixo ilustra o ciclo de vida das instruções de desvio durante a compilação de um laço `while (cond) { ... break; ... }`:
+O diagrama abaixo ilustra o fluxo de controle e o ciclo de vida das instruções no buffer `CODE`:
 
 ```mermaid
 flowchart TD
@@ -101,16 +53,16 @@ flowchart TD
         COND["Avaliação da expressão booleana (cond):<br/>• Emite instruções (CRVL, CRCT, CMEG, etc.)<br/>• Primeira instrução recebe prefixo 'L1:'"]
         WH["p_while_head:<br/>• idx1 = emit_marked('DSVF') [pendente]<br/>• WHILES[-1]['exits'].append(idx1)"]
         BODY["Corpo do laço (stmt):<br/>• Emite instruções normais<br/>• Se houver break: idx2 = emit_marked('DSVS')<br/>  WHILES[-1]['exits'].append(idx2)"]
-        SW["p_stmt_while:<br/>• w = WHILES.pop()<br/>• emit('DSVS L1') [retorno]<br/>• Gera rótulo L2 e emit_here(L2)<br/>• backpatch(w['exits'], L2)"]
+        SW["p_stmt_while:<br/>• w = WHILES.pop()<br/>• emit('DSVS L1') [retorno incondicional ao teste]<br/>• Gera rótulo L2 e emit_here(L2)<br/>• backpatch(w['exits'], L2)"]
     end
 
     subgraph Buffer_CODE["2. Buffer de Instruções (CODE)"]
-        I1["[idx 0] L1: CRVL 0,4 (avaliação)"]
+        I1["[idx 0] L1: CRVL 0,4 (início do teste)"]
         I2["[idx 1] CMEG"]
         I3["[idx 2] DSVF None ──► Remendado para: DSVF L2"]
         I4["[idx 3..k] Instruções do corpo..."]
         IB["[idx b] DSVS None (break) ──► Remendado para: DSVS L2"]
-        I5["[idx k+1] DSVS L1 (retorno incondicional ao teste)"]
+        I5["[idx k+1] DSVS L1 (retorno ao teste)"]
         I6["[idx k+2] L2: próxima instrução (saída do laço)"]
     end
 
@@ -121,22 +73,88 @@ flowchart TD
     BODY --> I4
     BODY --> IB
     SW --> I5
-    SW -. "backpatch([idx2, idxb], L2)" .-> I3
-    SW -. "backpatch([idx2, idxb], L2)" .-> IB
+    SW -. "backpatch([idx1, idxb], L2)" .-> I3
+    SW -. "backpatch([idx1, idxb], L2)" .-> IB
     SW --> I6
 ```
 
+### 2.3 Estrutura do Buffer de Código: Escrita Direta em Stream vs. Buffer em Memória (`CODE`)
+* **Alternativa descartada:** imprimir as instruções diretamente no terminal (`sys.stdout`) durante as reduções sintáticas.
+  * *Motivo:* impede o *backpatching*, pois uma linha de texto já transmitida ao console não pode ser corrigida retroativamente sem arquivos temporários ou uma segunda passagem de reprocessamento.
+* **Escolhida:** armazenamento sequencial em memória (`CODE = []`), onde cada item é um registro estruturado com `op`, `arg`, `labels` e `comment`.
+* **Vantagem:** acesso em tempo constante $O(1)$ por índice durante o `patch(idx, label)` e formatação limpa e determinística do programa final.
+
+### 2.4 Formatação de Rótulos para o MEPA 5.0: Rótulos Isolados com awk vs. Prefixação Inline (`emit_here`)
+* **Alternativa descartada:** emitir rótulos em linhas exclusivas (`L1:\n`) e exigir que o usuário execute um filtro externo via `awk`, conforme sugerido na Seção 5.1 do roteiro.
+  * *Motivo:* se executado diretamente sem o filtro `awk`, o interpretador MEPA 5.0 falha com o erro: `Falta código de instrução: L1:`. Essa dependência quebra execuções automatizadas em ambientes Windows.
+* **Escolhida:** adiamento e prefixação de rótulos através de `emit_here(label)`. O rótulo é guardado na lista `PENDING_LABELS` e prefixado na próxima instrução executável gerada (`L1: CRVL 0,4`).
+* **Vantagem:** o código de saída é imediatamente executável pelo MEPA 5.0 de forma nativa e sem etapas intermediárias de pós-processamento.
+
+### 2.5 Gerenciamento de Memória de Bloco: Alocação com `AMEM` e Devolução com `DMEM`
+* **Alternativa descartada:** alocar memória na entrada do bloco e não devolvê-la ao término do escopo.
+  * *Motivo:* viola o modelo da MVP. A Seção 2.3 do roteiro estabelece que cada bloco deve reservar sua memória local com `AMEM` e devolvê-la rigorosamente com `DMEM` ao fechar as chaves (`}`).
+* **Escolhida:** registro dos blocos em `BLOCK_STACK`. Ao fechar o bloco `}`, o compilador verifica `ctx['env'].usage`; havendo variáveis locais declaradas (`usage > 0`), emite imediatamente `DMEM {usage}` antes de restaurar o escopo pai (`TOP = ctx['prev_top']`).
+* **Vantagem:** mantém a pilha do MEPA estritamente balanceada durante a execução de escopos aninhados.
+
+### 2.6 Resolução do Comando `break`: Rótulo Escalar Único vs. Lista Unificada de Pendências (`exits`)
+* **Alternativa descartada:** armazenar o rótulo de saída do laço em uma variável escalar simples.
+  * *Motivo:* caso haja múltiplos comandos `break` no corpo do mesmo laço, uma única variável escalar não consegue reter todos os pontos de salto que precisam ser desviados para o término do laço.
+* **Escolhida:** lista unificada de pendências em `WHILES[-1]['exits']`.
+* **Vantagem:** a lista agrega o índice da instrução `DSVF` da condição de entrada e todos os índices das instruções `DSVS` geradas pelos comandos `break` do laço. Ao finalizar o laço, `backpatch(w['exits'], L_fim)` direciona todos os saltos para a instrução pós-laço.
+
 ---
 
-## 4. Evidências de Execução e Testes
+## 3. Evidências de Execução
 
-A integridade do compilador gerador de código com *backpatching* foi atestada por meio da suíte automatizada [`tests/test_suite_lab3.py`](../tests/test_suite_lab3.py).
+Todas as etapas foram validadas com baterias automatizadas executadas no terminal e confrontadas diretamente com a máquina virtual MEPA 5.0 e o compilador de referência Java oficial (`tools/uc-compilador.jar`).
 
-### 4.1 Teste Integrador: Fibonacci (`examples/fib.uc`)
+### 3.1 Bateria de Testes Automatizada
 
-Implementamos o algoritmo de Fibonacci com variáveis de controle de fluxo e acumulação, submetendo o binário compilado ao interpretador MEPA 5.0 com as três entradas oficiais exigidas na Seção 6 do roteiro:
+Executamos a suíte de testes integrada [`tests/test_suite_lab3.py`](../tests/test_suite_lab3.py), que compila todos os programas válidos, executa seus binários no interpretador MEPA 5.0, valida o teste integrador de Fibonacci nas três entradas oficiais e submete a bateria de erros esperados.
 
-Código-fonte `fib.uc`:
+Comando executado:
+```bash
+python tests/test_suite_lab3.py
+```
+
+#### Parte 1: Programas Válidos Compilados e Executados no MEPA (15/15)
+
+| Programa Válido | Instruções MEPA | Saída Esperada no MEPA | Saída Obtida no MEPA | Status |
+|---|---|---|---|---|
+| `examples/expr.uc` | 7 | `[]` | `[]` | ✅ Aprovado |
+| `examples/decl.uc` | 5 | `[]` | `[]` | ✅ Aprovado |
+| `examples/precedencia.uc` | 20 | `[]` | `[]` | ✅ Aprovado |
+| `examples/if.uc` | 14 | `[]` | `[]` | ✅ Aprovado |
+| `examples/while.uc` | 18 | `[10, 9, 8, 7, 6, 5, 4, 3, 2, 1]` | `[10, 9, 8, 7, 6, 5, 4, 3, 2, 1]` | ✅ Aprovado |
+| `examples/break.uc` | 24 | `[1, 2, 3, 4, 5]` | `[1, 2, 3, 4, 5]` | ✅ Aprovado |
+| `examples/dowhile.uc` | 17 | `[1, 2, 3, 4, 5]` | `[1, 2, 3, 4, 5]` | ✅ Aprovado |
+| `examples/fib.uc` (entrada 10) | 38 | `[10, 55]` | `[10, 55]` | ✅ Aprovado |
+| `examples/atribuicao.uc` | 10 | `[42]` | `[42]` | ✅ Aprovado |
+| `examples/blocos.uc` | 13 | `[2, 1]` | `[2, 1]` | ✅ Aprovado |
+| `examples/charlit.uc` | 9 | `[98]` | `[98]` | ✅ Aprovado |
+| `examples/decl_multipla.uc` | 17 | `[6]` | `[6]` | ✅ Aprovado |
+| `examples/leitura.uc` (entrada 21) | 9 | `[42]` | `[42]` | ✅ Aprovado |
+| `examples/logica.uc` | 17 | `[1]` | `[1]` | ✅ Aprovado |
+| `examples/relacionais.uc` | 31 | `[1]` | `[1]` | ✅ Aprovado |
+
+#### Parte 2: Bateria Oficial de Erros — Seção 6.1 (Meta 7/7)
+
+| Arquivo de Teste | Fase | Substring Esperada | Saída Emitida pelo Compilador PLY | Status |
+|---|---|---|---|---|
+| `break_outside_loop.uc` | Semântica | `break fora` | `linha 2: erro semântico: break fora de um laço` | ✅ OK |
+| `comentario_nao_fechado.uc` | Léxica | `comentário não fechado` | `linha 1: comentário não fechado` | ✅ OK |
+| `expoente_sem_digitos.uc` | Léxica | `expoente sem dígitos` | `linha 3: expoente sem dígitos` | ✅ OK |
+| `redeclared_var.uc` | Semântica | `redeclarada` | `linha 4: erro semântico: variável redeclarada a` | ✅ OK |
+| `tokens_after_block.uc` | Sintática | `token inesperado` | `linha 4: erro de sintaxe: token inesperado 'int' após o fim do programa` | ✅ OK |
+| `type_mismatch.uc` | Semântica | `incompatíveis` | `linha 3: erro semântico: tipos int e bool são incompatíveis` | ✅ OK |
+| `undeclared_var.uc` | Semântica | `nao declarada` | `linha 2: variável não declarada (nao declarada)` | ✅ OK |
+
+---
+
+### 3.2 O Teste Integrador: Fibonacci (Seção 6 do Roteiro)
+
+Compilamos e executamos o programa [`examples/fib.uc`](../examples/fib.uc) conforme a especificação da Seção 6 do roteiro:
+
 ```c
 {
     int n;
@@ -159,7 +177,7 @@ Código-fonte `fib.uc`:
 }
 ```
 
-Código MEPA gerado pelo nosso compilador:
+Código MEPA 5.0 gerado pelo compilador:
 ```
 INPP
 AMEM 4	; n address: 0
@@ -200,7 +218,7 @@ DMEM 20
 PARA
 ```
 
-#### Resultados de Execução no MEPA 5.0
+#### Tabela de Resultados no MEPA 5.0
 
 | Entrada ($n$) | Saída Esperada ($n$, $F_n$) | Saída Obtida no MEPA | Status |
 |---|---|---|---|
@@ -208,11 +226,7 @@ PARA
 | `10` | `10` e `55` | `10` e `55` | ✅ Aprovado com Sucesso |
 | `20` | `20` e `6765` | `20` e `6765` | ✅ Aprovado com Sucesso |
 
-Comando executado:
-```bash
-python tests/test_suite_lab3.py
-```
-Trecho do log de validação:
+Saída integral emitida no console:
 ```
 --- PARTE 2: TESTE INTEGRADOR — FIBONACCI (ENTRADAS 1, 10, 20) ---
   [OK FIB] Entrada 1 -> Saída [1, 1]
@@ -223,71 +237,51 @@ Total Fibonacci aprovados: 3/3
 
 ---
 
-### 4.2 Bateria Geral de Programas Válidos (15/15)
+### 3.3 Deslocamento de Memória em Blocos Aninhados (Experimento da Seção 2.3)
 
-Todos os programas válidos do repositório foram compilados via `lab3_gerador.py` e executados na MEPA 5.0:
+Conforme a caixa *"Sua vez"* da Seção 2.3 (pág. 5 do roteiro), realizamos o experimento comparativo compilando o código com blocos aninhados:
+```c
+{
+    int x; x = 1;
+    {
+        int y; y = x + 1;
+        print(y);
+    }
+    print(x);
+}
+```
 
-| Programa | Instruções MEPA | Saída Obtida | Status |
-|---|---|---|---|
-| `examples/expr.uc` | 7 | `[]` | ✅ Aprovado |
-| `examples/decl.uc` | 5 | `[]` | ✅ Aprovado |
-| `examples/precedencia.uc` | 20 | `[]` | ✅ Aprovado |
-| `examples/if.uc` | 14 | `[]` | ✅ Aprovado |
-| `examples/while.uc` | 18 | `[10, 9, 8, 7, 6, 5, 4, 3, 2, 1]` | ✅ Aprovado |
-| `examples/break.uc` | 24 | `[1, 2, 3, 4, 5]` | ✅ Aprovado |
-| `examples/dowhile.uc` | 17 | `[1, 2, 3, 4, 5]` | ✅ Aprovado |
-| `examples/fib.uc` (entrada 10) | 38 | `[10, 55]` | ✅ Aprovado |
-| `examples/atribuicao.uc` | 10 | `[42]` | ✅ Aprovado |
-| `examples/blocos.uc` | 13 | `[2, 1]` | ✅ Aprovado |
-| `examples/charlit.uc` | 9 | `[98]` | ✅ Aprovado |
-| `examples/decl_multipla.uc` | 17 | `[6]` | ✅ Aprovado |
-| `examples/leitura.uc` (entrada 21) | 9 | `[42]` | ✅ Aprovado |
-| `examples/logica.uc` | 17 | `[1]` | ✅ Aprovado |
-| `examples/relacionais.uc` | 31 | `[1]` | ✅ Aprovado |
+* **Comportamento Correto (`GLOBAL_OFFSET` contínuo):**  
+  A variável `x` recebe deslocamento `0` e `y` recebe deslocamento `4`. A atribuição a `y` não sobrepõe a memória de `x`. Ao sair do bloco interno, `DMEM 4` descarta `y`, e o comando `print(x)` subsequente lê a posição `0`, emitindo no MEPA a saída correta: **`[2, 1]`**.
+* **Reintrodução Deliberada do Bug (`OFFSET = 0` na abertura do bloco):**  
+  Forçando o reinício do contador para zero no bloco interno, `y` foi alocada no endereço `0` (o mesmo de `x`). A operação `y = x + 1` gravou o valor `2` sobre a posição de memória de `x`. Ao final, `print(x)` leu o valor corrompido, emitindo a saída errada: **`[2, 2]`**, comprovando de forma empírica a necessidade da preservação linear do deslocamento.
 
 ---
 
-### 4.3 Bateria Oficial de Erros Semânticos e Léxicos (7/7)
+### 3.4 Checklist de Verificação ("Você conseguiu?", Seção 5, pág. 8 do Roteiro)
 
-A robustez da fase de análise foi mantida integralmente:
-
-| Caso de Erro | Fase | Substring Verificada | Diagnóstico Emitido | Status |
-|---|---|---|---|---|
-| `break_outside_loop.uc` | Semântica | `break fora` | `linha 2: erro semântico: break fora de um laço` | ✅ OK |
-| `comentario_nao_fechado.uc` | Léxica | `comentário não fechado` | `linha 1: comentário não fechado` | ✅ OK |
-| `expoente_sem_digitos.uc` | Léxica | `expoente sem dígitos` | `linha 3: expoente sem dígitos` | ✅ OK |
-| `redeclared_var.uc` | Semântica | `redeclarada` | `linha 4: erro semântico: variável redeclarada a` | ✅ OK |
-| `tokens_after_block.uc` | Sintática | `token inesperado` | `linha 4: erro de sintaxe: token inesperado 'int' após o fim do programa` | ✅ OK |
-| `type_mismatch.uc` | Semântica | `incompatíveis` | `linha 3: erro semântico: tipos int e bool são incompatíveis` | ✅ OK |
-| `undeclared_var.uc` | Semântica | `nao declarada` | `linha 2: variável não declarada (nao declarada)` | ✅ OK |
+- [x] **`if-else` executa o ramo correto nos dois casos:** Validado em `examples/if.uc`. Quando a guarda é verdadeira, executa o bloco *then* e salta o *else* via `DSVS L2`; quando falsa, `DSVF L1` desvia diretamente para a primeira instrução do ramo *else*.
+- [x] **`while` com contador imprime a sequência esperada:** Validado em `examples/while.uc`, imprimindo a contagem decrescente exata `[10, 9, 8, 7, 6, 5, 4, 3, 2, 1]`.
+- [x] **Um laço com dois `break` interrompe nos dois pontos:** Validado no teste do Desafio 5.3 (`if (i == 3) break; if (i == 5) break;`), onde ambos os comandos `break` registram seus saltos na lista `exits` e são remendados simultaneamente para a saída `L2:`.
+- [x] **`do-while` executa o corpo ao menos uma vez, mesmo se a condição for falsa na entrada:** Validado no teste `{ int x; x = 99; do { print(x); } while (false); }`, imprimindo `99` antes de checar a condição falsa e finalizar.
 
 ---
 
-### 4.4 Checklist de Verificação ("Você conseguiu?", Seção 5, pág. 8 do Roteiro)
+## 4. Desafios
 
-O roteiro estabelece quatro metas centrais de comportamento em tempo de execução para atestar a correção da síntese de código:
-- [x] **`if-else` executa o ramo correto nos dois casos:** Comprovado em `examples/if.uc`. Quando a condição avalia como verdadeira, o bloco *then* executa e salta incondicionalmente o *else* via `DSVS L2`; quando falsa, `DSVF L1` desvia diretamente para a primeira instrução do *else*.
-- [x] **`while` com contador imprime a sequência esperada:** Comprovado em `examples/while.uc`, imprimindo a sequência decrescente exata `[10, 9, 8, 7, 6, 5, 4, 3, 2, 1]`.
-- [x] **Um laço com dois `break` interrompe nos dois pontos:** Comprovado no teste do Desafio 5.3 (`if (i == 3) break; if (i == 5) break;`), onde ambos os comandos `break` têm seus índices anexados à mesma lista de saídas e são remendados simultaneamente para o rótulo pós-laço `L2:`.
-- [x] **`do-while` executa o corpo ao menos uma vez, mesmo se a condição for falsa na entrada:** Comprovado no teste `{ int x; x = 99; do { print(x); } while (false); }`, onde a instrução `print(x)` emite `99` antes de testar a guarda booleana falsa e encerrar o laço.
+### 4.1 Desafio 5.1 — Backpatch contra Alocação Antecipada
 
----
-
-## 5. Resolução dos Desafios do Roteiro
-
-### 5.1 Desafio 5.1 — Backpatch contra Alocação Antecipada
-
-Conforme solicitado na Seção 7.1, implementamos **as duas formas de `if-else` no mesmo arquivo** ([`src/lab3_gerador.py`](../src/lab3_gerador.py)), acessíveis via rotina programática ou pela linha de comando com a opção:
+Conforme solicitado na Seção 7.1, implementamos **as duas formas de `if-else` no mesmo arquivo** ([`src/lab3_gerador.py`](../src/lab3_gerador.py)), acessíveis via rotina programática ou diretamente pela linha de comando:
 ```bash
 python src/lab3_gerador.py --compare-if-else
 ```
 
-Abaixo apresentamos a tabela comparativa solicitada entre a técnica de pilha de rótulos (Lab 1) e o *backpatching* (Lab 3):
+#### Tabela Comparativa (Preenchimento Oficial)
 
 | Aspecto | Pilha de Rótulos (Lab 1) | Backpatching (Lab 3) |
 |---|---|---|
-| **Quando o desvio é emitido** | O desvio (`DSVF`/`DSVS`) é emitido com rótulo completo já na redução do cabeçalho, pois o rótulo foi pré-alocado antes mesmo de o bloco ser traduzido. | A instrução é emitida com operando indefinido (`None`) no momento do desvio; o operando só é preenchido retroativamente quando o rótulo de destino é alcançado. |
-| **O que guarda o estado** | Pilhas de tuplas de rótulos simbólicos gerados antecipadamente (`IF_PENDING = [(l1, l2), ...]`). | Listas encadeadas de índices de instruções no buffer de código (`patchlist`: `IFS = [{'falses': [idx], 'exits': [...]}]`). |
+| **Quando o desvio é emitido** | O desvio (`DSVF`/`DSVS`) é emitido com o rótulo completo na redução do cabeçalho, pois o rótulo foi gerado antes de o bloco ser traduzido. | A instrução é emitida com operando indefinido (`None`) no momento do desvio; o operando só é preenchido retroativamente quando o rótulo de destino é alcançado. |
+| **O que guarda o estado** | Pilhas de tuplas de rótulos simbólicos gerados antecipadamente (`IF_PENDING = [(l1, l2), ...]`). | Listas de índices de instruções no buffer de código (`patchlist`: `IFS = [{'falses': [idx], 'exits': [...]}]`). |
 | **Passagens sobre o código** | Estritamente 1 passagem com escrita direta na saída padrão (*streaming*). | 1 passagem sintática mantendo as instruções em buffer na memória para resolução pontual dos índices pendentes antes da emissão final. |
 | **Usado por yacc/bison/PLY** | Exige criação de regras gramaticais intermediárias vazias (*mid-rule actions*) para sincronizar a emissão no ponto exato. | Padrão canônico de compiladores de produção; elimina regras intermediárias artificiais e unifica listas de saltos múltiplos. |
 
@@ -296,7 +290,7 @@ A **pilha de rótulos pré-alocados** é conveniente apenas para tradutores triv
 
 ---
 
-### 5.2 Desafio 5.2 — O While com e sem Chaves
+### 4.2 Desafio 5.2 — O While com e sem Chaves
 
 Código analisado:
 ```c
@@ -370,7 +364,7 @@ Código analisado:
 
 ---
 
-### 5.3 Desafio 5.3 — Auditoria de Código de IA
+### 4.3 Desafio 5.3 — Auditoria de um Gerador de IA (Nível 4)
 
 Trecho submetido à auditoria:
 ```python
@@ -383,11 +377,11 @@ def patch(idx, label):
 ```
 
 #### 1. Análise do Índice Devolvido em (A)
-O índice devolvido em (A) está **completamente errado**. Em Python, as listas possuem indexação baseada em zero ($0, 1, \dots, N-1$). Quando `CODE.append(...)` é executado sobre uma lista que continha $N$ elementos, o elemento recém-adicionado é alocado exatamente no índice $N$. Após a inserção, `len(CODE)` passa a valer $N+1$. Portanto, retornar `len(CODE)` aponta para a posição *seguinte*, isto é, para um elemento que ainda não existe no buffer ou para uma instrução arbitrária que será inserida no futuro!  
+O índice devolvido em (A) está **completamente errado**. Em Python, as listas utilizam indexação baseada em zero ($0, 1, \dots, N-1$). Quando `CODE.append(...)` é chamado sobre uma lista que continha $N$ elementos, o elemento recém-adicionado é alocado exatamente no índice $N$. Após a inserção, `len(CODE)` passa a valer $N+1$. Portanto, retornar `len(CODE)` aponta para a posição *seguinte*, isto é, para um elemento que ainda não existe no buffer ou para uma instrução arbitrária que será inserida no futuro.  
 *Correção obrigatória:* `return len(CODE) - 1`.
 
 #### 2. Riscos de Remendo Duplicado e Mecanismos de Proteção
-Se a lista de pendências contiver um índice já remendado, a atribuição `CODE[idx]['arg'] = label` sobrescreverá silenciosamente o rótulo de destino original. Isso ocorre com frequência se uma lista de pendências não for esvaziada ou se for reutilizada indevidamente entre laços aninhados, corrompendo desvios de blocos anteriores.  
+Se a lista de pendências contiver um índice já remendado, a atribuição `CODE[idx]['arg'] = label` sobrescreverá silenciosamente o rótulo de destino original. Isso acontece se uma lista de pendências não for limpa ou for reutilizada indevidamente entre laços aninhados, corrompendo desvios de blocos anteriores.  
 *Mecanismo de proteção implementado em `lab3_gerador.py`:*
 ```python
 def patch(idx, label):
@@ -418,41 +412,47 @@ Código de teste:
 Na implementação corrigida, ambos os comandos `break` chamam `idx = emit_marked("DSVS")`, registrando seus índices na lista `w['exits']`. Ao encerrar o laço, `backpatch(w['exits'], L2)` atualiza atomicamente o `DSVF` da condição e os dois `DSVS` dos `break` para apontarem para o rótulo de saída `L2:`. Executado no MEPA 5.0, o laço interrompe na terceira iteração e emite a saída correta `3`.
 
 #### 4. Por que este Bug é Silencioso e só a Execução o Revela?
-Este bug de indexação é de natureza extremamente insidiosa porque não produz qualquer erro de sintaxe, nem quebra o compilador com exceções de tipagem durante o processo de compilação. Em tempo de análise, o índice incorreto retornado é apenas um número inteiro válido armazenado em uma lista Python. Se outras instruções forem adicionadas ao buffer `CODE` antes do remendo ocorrer (como o corpo do laço ou comandos do bloco `then`), o índice `len(CODE)` passará a apontar para uma instrução válida subsequente (por exemplo, um `ARMZ` ou um `SOMA`). Quando a função `patch` é executada, ela altera o campo `arg` dessa instrução inocente em vez do desvio pretendido. O compilador emite um programa que parece perfeitamente formatado no arquivo final. Contudo, durante a execução na máquina virtual MEPA, o fluxo de controle de desvios salta para endereços corrompidos, resultando em laços infinitos, desvios para instruções inexistentes ou pilhas desbalanceadas que só se manifestam em tempo de execução (*runtime*).
+Este bug de indexação é de natureza extremamente perigosa porque não gera erros de sintaxe nem lança exceções de compilação. Em tempo de análise, o índice incorreto retornado é apenas um número inteiro válido guardado em uma lista Python. Se outras instruções forem adicionadas ao buffer `CODE` antes do remendo acontecer (como instruções do corpo do laço ou do bloco `then`), o índice `len(CODE)` apontará para uma instrução arbitrária subsequente (como um `ARMZ` ou um `SOMA`). Ao chamar `patch`, altera-se o operando dessa instrução inocente em vez do desvio. O código gerado aparenta estar bem formatado, mas durante a execução na máquina virtual MEPA o programa entra em laços infinitos, salta para instruções incorretas ou desbalanceia a pilha de operandos.
 
 ---
 
-## 6. Divergências em Relação ao Compilador de Referência
+## 5. Divergências em Relação ao Compilador de Referência
 
 Confrontando o código gerado pelo nosso compilador em Python com o executável oficial Java (`tools/uc-compilador.jar`), apontamos e justificamos todas as divergências:
 
-1. **Alocação de Ponteiro Temporário (`AMEM 4 ; temp`):**
-   * O compilador Java emite `AMEM 4 ; temp (ponteiro)` na abertura de cada bloco e `DMEM 4` no fechamento.
-   * *Nossa abordagem:* Conforme a Seção 11.2 do roteiro de laboratório, essa alocação interna do gerador Java é desnecessária para a execução do $\mu\text{C}$ e foi deliberadamente desconsiderada. Nosso compilador aloca estritamente o espaço demandado pelas variáveis locais dos usuários (`usage`), economizando memória de pilha na máquina virtual.
-2. **Posicionamento de Rótulos de Desvio (Prevenção da Falha do MEPA 5.0):**
-   * O compilador Java emite os rótulos isolados em linhas exclusivas (`L1:\n CRVL 0,0`). Essa formatação quebra o interpretador MEPA 5.0 original, exigindo filtragem externa com `awk`.
-   * *Nossa abordagem:* O nosso módulo `lab3_gerador.py` implementa `emit_here(label)` com prefixação automática na instrução subsequente (`L1: CRVL 0,0`). Com isso, a saída gerada é imediatamente executável pelo MEPA sem necessidade de scripts auxiliares de pós-processamento.
-3. **Instrução de Encerramento:**
-   * O compilador de referência emite `FIM` após a instrução `PARA`.
-   * *Nossa abordagem:* O nosso compilador emite `PARA`, que é a instrução padrão de parada definitiva do interpretador MEPA 5.0.
+### 5.1 Alocação de Ponteiro Temporário (`AMEM 4 ; temp`)
+* O compilador Java emite `AMEM 4 ; temp (ponteiro)` na abertura de cada bloco e `DMEM 4` no fechamento.
+* *Nossa abordagem:* Conforme a Seção 11.2 do roteiro de laboratório, essa alocação interna do gerador Java é desnecessária para a execução do $\mu\text{C}$ e foi deliberadamente desconsiderada. Nosso compilador aloca estritamente o espaço demandado pelas variáveis locais dos usuários (`usage`), economizando memória de pilha na máquina virtual.
+
+### 5.2 Posicionamento de Rótulos de Desvio (Prevenção da Falha do MEPA 5.0)
+* O compilador Java emite os rótulos isolados em linhas exclusivas (`L1:\n CRVL 0,0`). Essa formatação quebra o interpretador MEPA 5.0 original, exigindo filtragem externa com `awk`.
+* *Nossa abordagem:* O nosso módulo `lab3_gerador.py` implementa `emit_here(label)` com prefixação automática na instrução subsequente (`L1: CRVL 0,0`). Com isso, a saída gerada é imediatamente executável pelo MEPA sem necessidade de scripts auxiliares de pós-processamento.
+
+### 5.3 Instrução de Encerramento (`PARA` vs `FIM`)
+* O compilador de referência emite `FIM` após a instrução `PARA`.
+* *Nossa abordagem:* O nosso compilador emite `PARA`, que é a instrução padrão de parada definitiva do interpretador MEPA 5.0.
 
 ---
 
-## 7. Dificuldades Encontradas e Soluções
+## 6. Dificuldades Encontradas e Soluções
 
 1. **Rótulos Pendentes no Fechamento do Programa:**  
    Quando o último comando de um bloco era um laço `while`, o rótulo de saída do laço (`L2`) era registrado com `emit_here(L2)`, mas não havia instruções subsequentes no bloco de comandos para recebê-lo antes do fechamento do programa.  
    *Solução:* Adequamos a rotina `p_program` para que a instrução final de encerramento do bloco (`DMEM` ou `PARA`) consuma os rótulos pendentes em `PENDING_LABELS`, emitindo `L2: PARA`. Caso reste qualquer pendência após a finalização, é emitida a instrução neutra `L2: NADA`.
 
-2. **Compatibilidade de Codificação (UTF-8 no Windows):**  
+2. **Rastreamento e Unificação de Múltiplos Breaks:**  
+   Laços aninhados contendo múltiplos comandos `break` corriam o risco de remendar o desvio de escape no laço externo caso a pilha de laços não fosse manipulada de forma estritamente reentrante.  
+   *Solução:* Estruturamos `WHILES` como uma pilha de dicionários contendo a lista `exits` isolada por laço. Cada comando `break` localiza exclusivamente o topo `WHILES[-1]['exits']`, garantindo que desvios internos não vazem para laços externos.
+
+3. **Codificação de Caracteres no Console do Windows:**  
    Durante a execução dos testes automatizados via `subprocess.run`, mensagens de erro semântico contendo acentos provocavam divergências de decodificação na codificação de console padrão do Windows (`cp1252`).  
    *Solução:* Definimos explicitamente `my_env['PYTHONIOENCODING'] = 'utf-8'` e o parâmetro `encoding='utf-8'` em todos os subprocessos, garantindo 100% de estabilidade e reprodução dos testes em qualquer plataforma.
 
 ---
 
-## 8. Declaração de Uso de Inteligência Artificial
+## 7. Declaração de Uso de Inteligência Artificial
 
-Em estrito cumprimento à Política de Uso de Inteligência Artificial estabelecida na Seção 9 do roteiro:
+Em estrito cumprimento à Política de Uso de Inteligência Artificial estabelecida na Seção 9 do roteiro (Níveis e Escopos de IA):
 
 *Declaração individual de cada integrante:*
 

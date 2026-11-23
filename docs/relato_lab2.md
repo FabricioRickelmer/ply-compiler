@@ -72,7 +72,7 @@ Todas as etapas foram validadas com baterias automatizadas executadas no termina
 
 ### 3.1 Bateria de Testes Automatizada
 
-Executamos a suíte de testes integrada [`tests/test_suite_lab2.py`](../tests/test_suite_lab2.py), que compila todos os programas válidos, executa seus binários no MEPA e submete os casos da bateria oficial de erros.
+Executamos a suíte de testes integrada [`tests/test_suite_lab2.py`](file:///c:/Users/doida/ply-compiler/tests/test_suite_lab2.py), que compila todos os programas válidos, executa seus binários no MEPA e submete os casos da bateria oficial de erros.
 
 Comando executado:
 ```
@@ -83,25 +83,25 @@ python tests/test_suite_lab2.py
 
 | Programa Válido | Instruções MEPA | Saída Esperada no MEPA | Saída Obtida no MEPA | Status |
 |---|---|---|---|---|
-| `examples/expr.uc` | 5 | `[]` | `[]` | ✅ Aprovado |
-| `examples/decl.uc` | 2 | `[]` | `[]` | ✅ Aprovado |
-| `examples/precedencia.uc` | 18 | `[]` | `[]` | ✅ Aprovado |
-| `examples/if.uc` | 12 | `[]` | `[]` | ✅ Aprovado |
-| `examples/while.uc` | 16 | `[10, 9, 8, 7, 6, 5, 4, 3, 2, 1]` | `[10, 9, 8, 7, 6, 5, 4, 3, 2, 1]` | ✅ Aprovado |
-| `examples/break.uc` | 22 | `[1, 2, 3, 4, 5]` | `[1, 2, 3, 4, 5]` | ✅ Aprovado |
-| `examples/dowhile.uc` | 15 | `[1, 2, 3, 4, 5]` | `[1, 2, 3, 4, 5]` | ✅ Aprovado |
-| `examples/fib.uc` (entrada 10) | 36 | `[10, 55]` | `[10, 55]` | ✅ Aprovado |
-| `examples/atribuicao.uc` | 8 | `[42]` | `[42]` | ✅ Aprovado |
-| `examples/blocos.uc` | 10 | `[2, 1]` | `[2, 1]` | ✅ Aprovado |
-| `examples/charlit.uc` | 7 | `[98]` | `[98]` | ✅ Aprovado |
-| `examples/decl_multipla.uc` | 15 | `[6]` | `[6]` | ✅ Aprovado |
-| `examples/leitura.uc` (entrada 21) | 7 | `[42]` | `[42]` | ✅ Aprovado |
-| `examples/logica.uc` | 15 | `[1]` | `[1]` | ✅ Aprovado |
-| `examples/relacionais.uc` | 29 | `[1]` | `[1]` | ✅ Aprovado |
+| `examples\expr.uc` | 5 | `[]` | `[]` | ✅ Aprovado |
+| `examples\decl.uc` | 2 | `[]` | `[]` | ✅ Aprovado |
+| `examples\precedencia.uc` | 18 | `[]` | `[]` | ✅ Aprovado |
+| `examples\if.uc` | 12 | `[]` | `[]` | ✅ Aprovado |
+| `examples\while.uc` | 16 | `[10, 9, 8, 7, 6, 5, 4, 3, 2, 1]` | `[10, 9, 8, 7, 6, 5, 4, 3, 2, 1]` | ✅ Aprovado |
+| `examples\break.uc` | 22 | `[1, 2, 3, 4, 5]` | `[1, 2, 3, 4, 5]` | ✅ Aprovado |
+| `examples\dowhile.uc` | 15 | `[1, 2, 3, 4, 5]` | `[1, 2, 3, 4, 5]` | ✅ Aprovado |
+| `examples\fib.uc` (entrada 10) | 36 | `[10, 55]` | `[10, 55]` | ✅ Aprovado |
+| `examples\atribuicao.uc` | 8 | `[42]` | `[42]` | ✅ Aprovado |
+| `examples\blocos.uc` | 10 | `[2, 1]` | `[2, 1]` | ✅ Aprovado |
+| `examples\charlit.uc` | 7 | `[98]` | `[98]` | ✅ Aprovado |
+| `examples\decl_multipla.uc` | 15 | `[6]` | `[6]` | ✅ Aprovado |
+| `examples\leitura.uc` (entrada 21) | 7 | `[42]` | `[42]` | ✅ Aprovado |
+| `examples\logica.uc` | 15 | `[1]` | `[1]` | ✅ Aprovado |
+| `examples\relacionais.uc` | 29 | `[1]` | `[1]` | ✅ Aprovado |
 
 #### Parte 2: Bateria Oficial de Erros — Seção 6.1 (Meta 7/7)
 
-Execução do script oficial [`tests/test_errors.py`](../tests/test_errors.py):
+Execução do script oficial [`tests/test_errors.py`](file:///c:/Users/doida/ply-compiler/tests/test_errors.py):
 
 | Arquivo de Teste | Fase | Substring Esperada | Saída Emitida pelo Compilador PLY | Status |
 |---|---|---|---|---|
@@ -437,7 +437,7 @@ Em estrito cumprimento à Política de Uso de Inteligência Artificial estabelec
 *Declaração individual de cada integrante:*
 
 **Fabrício Rickelmer Souza Duarte:**  
-> "Atuei diretamente no desenvolvimento da arquitetura geral do compilador em [`src/lab2_semantica.py`](../src/lab2_semantica.py), na modelagem da tabela de símbolos encadeada (`Env`) e na integração da cascata de síntese de tipos. Utilizei IA estritamente em Nível 2 (Auxiliar) para consulta teórica das regras de coerção numérica e estruturação das classes de tipos primitivos. Toda a lógica de desvios, gerenciamento de memória contínua e resolução dos desafios foi implementada com total domínio técnico e rigor conceitual."
+> "Atuei diretamente no desenvolvimento da arquitetura geral do compilador em [`src/lab2_semantica.py`](file:///c:/Users/doida/ply-compiler/src/lab2_semantica.py), na modelagem da tabela de símbolos encadeada (`Env`) e na integração da cascata de síntese de tipos. Utilizei IA estritamente em Nível 2 (Auxiliar) para consulta teórica das regras de coerção numérica e estruturação das classes de tipos primitivos. Toda a lógica de desvios, gerenciamento de memória contínua e resolução dos desafios foi implementada com total domínio técnico e rigor conceitual."
 
 **Esther de Faria:**  
 > "Participei ativamente da elaboração e refinamento do analisador léxico e das rotinas de tipos básicos, implementando o suporte completo ao tipo `char` (Desafio 6.1) com literais de caractere e tratamento de sequências de escape. Utilizei assistência de IA em Nível 2 como apoio para consulta da sintaxe de expressões regulares do PLY, garantindo que o compilador identificasse os erros léxicos de comentários não fechados e expoentes sem dígitos."
